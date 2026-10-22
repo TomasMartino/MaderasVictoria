@@ -203,7 +203,7 @@
       guardarEnFirestore();
     };
     if (ahora) escribir();
-    else guardarTimer = setTimeout(escribir, 350);
+    else guardarTimer = setTimeout(escribir, 1000);
   }
 
   function cargar() {
