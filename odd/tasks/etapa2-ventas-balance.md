@@ -1,4 +1,4 @@
-# etapa2-ventas-balance — ventas, gastos y balance compartido en tiempo real
+﻿# etapa2-ventas-balance — ventas, gastos y balance compartido en tiempo real
 
 Objective: etapa 2 del app de Maderas Victoria. Ventas y balance compartido entre 4 usuarios en tiempo real con Firebase Firestore. Como en el Excel: ventas por un lado, balance por otro, y el balance se calcula solo a partir de las ventas y gastos cargados.
 
@@ -31,4 +31,8 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 
 ## Log
 
+
+- **L2** — Reglas de Firestore: archivo `firestore.rules` listo para copiar y pegar en Firebase Console (Firestore → Reglas → Publicar). Sin esto, ventas y gastos no se pueden leer ni escribir.
+- **L3** — Las 5 cuentas de usuario ya están creadas en Firebase Authentication (vityDiamante, joacoDiamante, ezequielDiamante, Diamante + una más). Cada venta/gasto queda firmado con el usuario que lo cargó.
+- **L4** — Modo local: si Firebase no está disponible, ventas y gastos se guardan en localStorage y la app sigue funcionando.
 - **L1** — Request: continuar con la etapa 2 (ventas, gastos y balance compartido en tiempo real con Firebase). Como en el Excel: ventas por un lado, balance por otro, el balance se actualiza solo con las ventas.
