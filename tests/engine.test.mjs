@@ -191,7 +191,7 @@ test("el mensaje de WhatsApp lleva cliente, lineas, total y el aviso de IVA", ()
   assert.equal(lineas[2], "Cliente: Juan Gomez");
   assert.equal(lineas[3], "Fecha: 22/10/2026");
   assert.equal(lineas[4], "");
-  assert.match(texto, /TIRANTE 2X4 — 2 × 4,50 m/);
+  assert.match(texto, /TIRANTE 2X4 — 2 × 4,2 m/);
   assert.match(texto, /PLACA 18MM — 1 un\./);
   assert.match(texto, /\*TOTAL: .*17\.500\*/);
   assert.equal(lineas[lineas.length - 1], "Precios más IVA.");

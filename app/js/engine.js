@@ -191,7 +191,7 @@
       var c = calc.linea(linea);
       if (c.total === null || c.total === undefined) return;
       var detalle = c.largoTiene
-        ? c.cantidad + " × " + metros(c.largoPedir)
+        ? c.cantidad + " × " + (linea.largo || metros(c.largoPedir)) + " m"
         : c.cantidad + " un.";
       l.push(linea.producto + " — " + detalle + " — " + pesos(c.total));
     });
