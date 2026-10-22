@@ -924,6 +924,7 @@
 
     enlazarProductos();
     pintarProductos();
+    enlazarCerrarSesion();
 
     if (cambios) {
       elProdReporte.hidden = false;
@@ -937,6 +938,8 @@
     if (usaFirebase) {
       auth.onAuthStateChanged(function (user) {
         usuarioActual = user;
+        var btn = $("#cerrar-sesion");
+        if (btn) btn.hidden = !user;
         if (user) {
           iniciarApp();
           escucharPresupuesto();
@@ -947,6 +950,18 @@
       return;
     }
     iniciarApp();
+  }
+
+  function enlazarCerrarSesion() {
+    var btn = $("#cerrar-sesion");
+    if (!btn) return;
+    btn.hidden = !usuarioActual;
+    btn.addEventListener("click", function () {
+      if (!usuarioActual) return;
+      auth.signOut().catch(function (err) {
+        avisar("No se pudo cerrar sesión: " + (err.message || ""));
+      });
+    });
   }
 
   function mostrarLogin() {
