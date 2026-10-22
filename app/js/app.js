@@ -534,7 +534,8 @@
       avisar("Agregá al menos un producto con cantidad");
       return;
     }
-    var tel = (CAT.negocio.telefonos[0] || "").replace(/\D/g, "");
+    var tel = (estado.telefono || "").replace(/\D/g, "");
+    if (!tel) tel = (CAT.negocio.telefonos[0] || "").replace(/\D/g, "");
     var url = "https://wa.me/549" + tel + "?text=" + encodeURIComponent(textoWhatsApp());
     window.open(url, "_blank", "noopener");
   }
