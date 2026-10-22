@@ -1,0 +1,208 @@
+/* Impresión / PDF: la hoja sale como el presupuesto de papel,
+   sin barra lateral, sin botones y sin avisos internos. */
+
+@page {
+  size: A4;
+  margin: 14mm 13mm 15mm;
+}
+
+html, body {
+  background: #fff !important;
+  height: auto;
+}
+
+.rail,
+.actionbar,
+#agregar,
+.linea__del,
+.aviso,
+.toast,
+.lineas__head .c-del {
+  display: none !important;
+}
+
+.app { display: block; }
+.content { padding: 0 !important; }
+
+.hoja {
+  max-width: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* membrete */
+
+.print-head {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 10mm;
+  border-bottom: 2px solid #EE1D23;
+}
+
+.print-head img { width: 42mm; height: auto; }
+
+.print-head__datos {
+  text-align: right;
+  font-size: 9pt;
+  color: #2B2118;
+  line-height: 1.5;
+}
+
+.print-head__datos strong {
+  display: block;
+  font-size: 11pt;
+  letter-spacing: 0.16em;
+}
+
+/* datos del cliente */
+
+.doc-head {
+  border-bottom: 0;
+  padding: 7mm 0 4mm;
+  gap: 12mm;
+}
+
+.campo-linea > span { color: #6E5B47; font-size: 7.5pt; }
+
+.campo-linea input {
+  border-bottom: 0.6pt solid #C9B99F;
+  font-size: 10.5pt;
+  padding: 1mm 0;
+  color: #2B2118;
+}
+
+/* el tipo de documento se imprime como titulo, no como botonera */
+
+.tipos { display: block; }
+
+.tipo { display: none; }
+
+.tipo.is-active {
+  display: block;
+  border: 0;
+  background: transparent;
+  color: #2B2118;
+  padding: 0;
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* tabla de lineas */
+
+.lineas { margin-top: 5mm; }
+
+.lineas__head {
+  padding: 0 0 1.6mm;
+  font-size: 7.5pt;
+  border-bottom: 1pt solid #2B2118;
+  align-items: end;
+}
+
+.lineas__head .c-pedir { display: block; }
+
+.linea {
+  /* proporciones en fr: nunca se desbordan del margen aunque cambie el papel */
+  grid-template-columns: 5fr 37fr 8fr 12fr 12fr 12fr 14fr;
+  gap: 2.5mm;
+  padding: 2.2mm 0;
+  border-top: 0;
+  border-bottom: 0.5pt solid #E1D5C2;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.linea__n {
+  display: grid;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #875E37;
+  font-size: 8pt;
+  justify-self: start;
+  align-self: center;
+}
+
+/* las etiquetas de los campos no se imprimen, pero el nombre del producto si */
+.linea .f > span:not(.prod-nombre) { display: none; }
+
+/* el desplegable imprime la opcion entera con el precio: se reemplaza por
+   el nombre pelado del producto */
+.linea .f--prod select { display: none; }
+
+.linea .f--prod > .prod-nombre {
+  display: block;
+  font-size: 10pt;
+  color: #2B2118;
+}
+
+.linea .pedir-print {
+  display: block;
+  align-self: center;
+  text-align: right;
+  font-size: 10pt;
+  color: #2B2118;
+}
+
+.linea .f--largo { min-height: 0; }
+
+/* el "se pide ..." de pantalla lo reemplaza la columna A PEDIR */
+.linea .pista { display: none !important; }
+
+.linea .f input,
+.linea .f select {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 10pt;
+  color: #2B2118;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.linea .f input:disabled { color: #B9AC98; }
+
+.linea .f--cant input,
+.linea .f--largo input { text-align: right; }
+
+.salida { padding: 0; font-size: 10pt; }
+.f--total .salida { font-size: 10.5pt; font-weight: 700; }
+.salida--largo { color: #875E37; font-size: 8pt; }
+.salida--aviso { color: #A9701A; font-size: 8pt; }
+
+/* pie */
+
+.doc-foot {
+  margin-top: 6mm;
+  padding-top: 3mm;
+  border-top: 1.2pt solid #2B2118;
+  break-inside: avoid;
+}
+
+.doc-foot__nota { font-size: 7.5pt; }
+
+.doc-foot__total strong {
+  font-size: 20pt;
+  color: #2B2118;
+}
+
+.print-foot {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8mm;
+  margin-top: 8mm;
+  padding-top: 1.5mm;
+  font-size: 7.5pt;
+  color: #6E5B47;
+  border-top: 0.5pt solid #E1D5C2;
+  break-inside: avoid;
+}
+
+.print-foot strong { color: #2B2118; letter-spacing: 0.08em; }
+
+.pista { font-size: 7.5pt; color: #875E37; }

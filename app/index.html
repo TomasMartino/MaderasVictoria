@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#EE1D23">
+<title>Maderas Victoria — Presupuestos</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="rail">
+    <a class="rail__brand" href="#" aria-label="Maderas Victoria">
+      <img src="assets/logo.png" alt="Maderas Victoria" width="168">
+    </a>
+
+    <nav class="rail__nav" aria-label="Secciones">
+      <button class="navbtn is-active" data-view="presupuesto">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>
+        <span>Presupuesto</span>
+      </button>
+      <button class="navbtn" data-view="ventas">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11z"/><path d="M9 20v-6h6v6"/></svg>
+        <span>Ventas</span>
+      </button>
+      <button class="navbtn" data-view="balance">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 20V11M12 20V5M17 20v-6"/></svg>
+        <span>Balance</span>
+      </button>
+    </nav>
+
+    <div class="rail__foot">
+      <span class="dot" id="estado-dot"></span>
+      <span id="estado-texto">Guardado en este equipo</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <main class="content">
+
+      <!-- ============ PRESUPUESTO ============ -->
+      <section id="view-presupuesto" class="view">
+        <div class="hoja">
+
+          <div class="print-head">
+            <img src="assets/logo.png" alt="Maderas Victoria" width="150">
+            <div class="print-head__datos">
+              <strong>MADERAS VICTORIA</strong>
+              <span id="print-tel"></span>
+            </div>
+          </div>
+
+          <div class="doc-head">
+            <div class="doc-head__cliente">
+              <label class="campo-linea">
+                <span>Cliente</span>
+                <input id="cliente" type="text" autocomplete="off" placeholder="Nombre y apellido">
+              </label>
+              <label class="campo-linea">
+                <span>Dirección</span>
+                <input id="direccion" type="text" autocomplete="off" placeholder="Calle y número">
+              </label>
+              <label class="campo-linea">
+                <span>Teléfono</span>
+                <input id="telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="261 000 0000">
+              </label>
+            </div>
+
+            <div class="doc-head__meta">
+              <label class="campo-linea campo-linea--corto">
+                <span>Fecha</span>
+                <input id="fecha" type="date">
+              </label>
+              <div class="tipos" id="tipos" role="group" aria-label="Tipo de documento">
+                <button class="tipo is-active" data-tipo="PRESUPUESTO">Presupuesto</button>
+                <button class="tipo" data-tipo="NOTA DE PEDIDO">Nota de pedido</button>
+                <button class="tipo" data-tipo="REMITO">Remito</button>
+                <button class="tipo" data-tipo="RECIBO">Recibo</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lineas">
+            <div class="lineas__head" aria-hidden="true">
+              <span class="c-n">#</span>
+              <span class="c-prod">Producto</span>
+              <span class="c-cant">Cantidad</span>
+              <span class="c-largo">Largo real</span>
+              <span class="c-pedir">A pedir</span>
+              <span class="c-precio">Precio</span>
+              <span class="c-total">Total</span>
+              <span class="c-del"></span>
+            </div>
+            <div id="lineas"></div>
+          </div>
+
+          <button id="agregar" class="btn btn--agregar" type="button">
+            <span aria-hidden="true">+</span> Agregar producto
+          </button>
+
+          <div id="aviso" class="aviso" hidden></div>
+
+          <div class="doc-foot">
+            <span class="doc-foot__nota">Precios más IVA</span>
+            <div class="doc-foot__total">
+              <span>Total</span>
+              <strong id="total">$ 0</strong>
+            </div>
+          </div>
+
+          <div class="print-foot">
+            <strong>MADERAS VICTORIA</strong>
+            <span id="print-tel-2"></span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ VENTAS ============ -->
+      <section id="view-ventas" class="view is-hidden">
+        <div class="hoja hoja--prox">
+          <span class="chip chip--rojo">Etapa 2</span>
+          <h2>Ventas del día</h2>
+          <p>Acá van a cargar cada venta —fecha, medio de pago, detalle y monto— y va a aparecer
+             al instante en la pantalla del balance de los otros.</p>
+          <ul class="lista-prox">
+            <li>Ventas compartidas entre los cuatro, en tiempo real.</li>
+            <li>Cada carga firmada con el usuario que la hizo.</li>
+            <li>Se anulan con motivo, no se borran.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ BALANCE ============ -->
+      <section id="view-balance" class="view is-hidden">
+        <div class="hoja hoja--prox">
+          <span class="chip chip--rojo">Etapa 2</span>
+          <h2>Balance por fecha</h2>
+          <p>El balance se va a calcular solo, con las ventas y los gastos del mes que elijan.
+             Se termina el problema de agregar las fechas a mano: cualquier mes, cualquier año.</p>
+          <ul class="lista-prox">
+            <li>Totales por semana y por mes, sin filas fijas.</li>
+            <li>Gastos, impuestos, sueldos y proveedores por día.</li>
+            <li>Exportación al Excel de siempre en un botón.</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="actionbar">
+      <div class="actionbar__total">
+        <span>Total</span>
+        <strong id="total-bar">$ 0</strong>
+      </div>
+      <div class="actionbar__botones">
+        <button id="nuevo" class="btn btn--ghost" type="button">Nuevo</button>
+        <button id="guardar" class="btn btn--ghost" type="button">Guardar</button>
+        <button id="imprimir" class="btn btn--ghost" type="button"><span class="solo-ancho">Imprimir / </span>PDF</button>
+        <button id="whatsapp" class="btn btn--brand" type="button"><span class="solo-ancho">Enviar por </span>WhatsApp</button>
+      </div>
+    </footer>
+  </div>
+
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="js/catalogo.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
