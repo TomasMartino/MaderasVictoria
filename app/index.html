@@ -23,6 +23,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>
         <span>Presupuesto</span>
       </button>
+      <button class="navbtn" data-view="productos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4z"/><path d="M4 7l3-3h10l3 3M9 12h6"/></svg>
+        <span>Productos</span>
+      </button>
       <button class="navbtn" data-view="ventas">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11z"/><path d="M9 20v-6h6v6"/></svg>
         <span>Ventas</span>
@@ -120,6 +124,57 @@
         </div>
       </section>
 
+      <!-- ============ PRODUCTOS ============ -->
+      <section id="view-productos" class="view is-hidden">
+
+        <div class="prod-panel">
+          <header class="prod-head">
+            <div class="prod-head__titulo">
+              <h1>Productos</h1>
+              <p class="prod-resumen" id="productos-resumen"></p>
+            </div>
+            <div class="prod-head__acciones">
+              <button id="productos-planilla" class="btn btn--ghost" type="button">Traer de la planilla</button>
+              <button id="productos-agregar" class="btn btn--brand" type="button">+ Agregar producto</button>
+            </div>
+          </header>
+
+          <p class="prod-reporte" id="productos-reporte" hidden></p>
+
+          <div class="prod-filtros">
+            <label class="buscador">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
+              <input id="productos-buscar" type="search" placeholder="Buscar producto…" autocomplete="off" aria-label="Buscar producto">
+            </label>
+            <div class="tipos tipos--start" id="productos-unidad" role="group" aria-label="Filtrar por unidad">
+              <button class="tipo is-active" data-unidad="">Todos</button>
+              <button class="tipo" data-unidad="METRO LINEAL">Metro lineal</button>
+              <button class="tipo" data-unidad="UNIDAD">Unidad</button>
+              <button class="tipo" data-unidad="METRO 2">Metro 2</button>
+            </div>
+          </div>
+
+          <div class="prod-tabla">
+            <div class="prod-fila prod-fila--head" aria-hidden="true">
+              <span>Producto</span>
+              <span class="c-der">Precio</span>
+              <span>Fórmula</span>
+              <span class="c-der">Stock</span>
+              <span></span>
+            </div>
+            <div id="productos-lista"></div>
+          </div>
+
+          <button id="productos-agregar-2" class="btn btn--agregar" type="button">+ Agregar producto</button>
+
+          <p class="prod-pie">
+            El stock es la cantidad que tenés hoy. Cuando esté la etapa 2, cada venta lo va a descontar sola.
+            Los precios que edites acá no se pisan al traer la planilla.
+          </p>
+        </div>
+
+      </section>
+
       <!-- ============ VENTAS ============ -->
       <section id="view-ventas" class="view is-hidden">
         <div class="hoja hoja--prox">
@@ -170,8 +225,59 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<!-- ============ ALTA / EDICION DE PRODUCTO ============ -->
+<div id="modal-producto" class="modal" hidden>
+  <form class="modal__caja" id="form-producto" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" novalidate>
+    <h2 class="modal__titulo" id="modal-titulo">Nuevo producto</h2>
+
+    <label class="campo">
+      <span class="campo__label">Nombre</span>
+      <input id="p-nombre" class="campo__input" type="text" maxlength="60" autocomplete="off" placeholder="VIGA 23-25 CM">
+    </label>
+
+    <div class="campo">
+      <span class="campo__label">Unidad</span>
+      <div class="tipos tipos--start" id="p-unidad" role="group" aria-label="Unidad">
+        <button type="button" class="tipo" data-unidad="METRO LINEAL">Metro lineal</button>
+        <button type="button" class="tipo" data-unidad="UNIDAD">Unidad</button>
+        <button type="button" class="tipo" data-unidad="METRO 2">Metro 2</button>
+      </div>
+    </div>
+
+    <label class="campo">
+      <span class="campo__label">Precio <em>(más IVA)</em></span>
+      <input id="p-precio" class="campo__input" type="text" inputmode="decimal" autocomplete="off" placeholder="8.500">
+      <small class="campo__ayuda">Por metro o por unidad, según corresponda. Vacío = sin precio.</small>
+    </label>
+
+    <label class="check">
+      <input id="p-largo" type="checkbox">
+      <span>
+        <strong>Pide largo</strong>
+        <small id="p-largo-ayuda">Se cobra cantidad × largo, redondeado a 0,50 m.</small>
+      </span>
+    </label>
+
+    <label class="campo">
+      <span class="campo__label">Stock</span>
+      <input id="p-stock" class="campo__input" type="text" inputmode="decimal" autocomplete="off" placeholder="—">
+      <small class="campo__ayuda" id="p-stock-ayuda">Cantidad que hay hoy. Vacío = sin contar.</small>
+    </label>
+
+    <p class="modal__error" id="p-errores" hidden></p>
+
+    <div class="modal__pie">
+      <button type="button" class="btn btn--ghost" id="p-baja" hidden>Dar de baja</button>
+      <span class="modal__espacio"></span>
+      <button type="button" class="btn btn--ghost" id="p-cancelar">Cancelar</button>
+      <button type="submit" class="btn btn--brand">Guardar</button>
+    </div>
+  </form>
+</div>
+
 <script src="js/catalogo.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/productos.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

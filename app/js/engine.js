@@ -66,21 +66,21 @@
     var r = {
       producto: prod,
       cantidad: cant,
-      precio: prod.p,
-      largoTiene: !!prod.l,
+      precio: prod.precio,
+      largoTiene: !!prod.pideLargo,
       largoPedir: null,
       total: null,
       aviso: null,
       detalle: null,
     };
 
-    if (prod.p === null || prod.p === undefined) {
+    if (prod.precio === null || prod.precio === undefined) {
       r.aviso = "SIN PRECIO";
       r.detalle = "Falta cargar el precio de este producto.";
       return r;
     }
 
-    if (prod.l) {
+    if (prod.pideLargo) {
       var lp = largoAPedir(linea.largo, paso);
       if (!lp.ok) {
         r.aviso = lp.motivo;
@@ -88,11 +88,11 @@
         return r;
       }
       r.largoPedir = lp.valor;
-      r.total = cant === null ? null : cant * lp.valor * prod.p;
+      r.total = cant === null ? null : cant * lp.valor * prod.precio;
       return r;
     }
 
-    r.total = cant === null ? null : cant * prod.p;
+    r.total = cant === null ? null : cant * prod.precio;
     return r;
   }
 
@@ -120,7 +120,7 @@
     var paso = (catalogo && catalogo.paso) || 0.5;
     var porNombre = {};
     productos.forEach(function (p) {
-      porNombre[p.n] = p;
+      porNombre[p.nombre] = p;
     });
 
     function resolver(linea) {

@@ -1,7 +1,10 @@
 """Genera app/js/catalogo.js desde la hoja PRECIOS del PRESUPUESTO.
 
-El presupuesto Excel sigue siendo la fuente de la lista de precios: se edita
-ahi y se vuelve a correr este script. La app nunca inventa precios.
+Ojo: este archivo es la SEMILLA del catalogo, no la verdad absoluta. Desde la
+app se pueden agregar productos y cambiar precios; esos cambios se guardan
+aparte y no se pisan al volver a correr este script (la regla vive en
+app/js/productos.js). La app nunca inventa precios: o salen de aca o los carga
+una persona.
 """
 import datetime
 import json
@@ -25,10 +28,10 @@ for r in range(2, 89):
     precio = ws.cell(r, 3).value
     productos.append(
         {
-            "n": nombre,
-            "u": ws.cell(r, 2).value,
-            "p": precio if isinstance(precio, (int, float)) else None,
-            "l": ws.cell(r, 4).value == "SI",
+            "nombre": nombre,
+            "unidad": ws.cell(r, 2).value,
+            "precio": precio if isinstance(precio, (int, float)) else None,
+            "pideLargo": ws.cell(r, 4).value == "SI",
         }
     )
 
@@ -50,5 +53,5 @@ with open(OUT, "w", encoding="utf-8") as fh:
     fh.write(f"// Productos: {len(productos)} | paso de corte: {paso} m\n")
     fh.write(f"window.TV_CATALOGO = {cuerpo};\n")
 
-con_precio = sum(1 for p in productos if p["p"] is not None)
+con_precio = sum(1 for p in productos if p["precio"] is not None)
 print(f"{OUT}: {len(productos)} productos ({con_precio} con precio), paso {paso}")

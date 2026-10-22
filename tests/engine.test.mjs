@@ -10,9 +10,9 @@ const codigo = readFileSync(new URL("../app/js/engine.js", import.meta.url), "ut
 vm.runInThisContext(codigo, { filename: "engine.js" });
 const TV = globalThis.TV;
 
-const metro = { n: "TIRANTE 2X4", u: "METRO LINEAL", p: 1000, l: true };
-const unidad = { n: "PLACA 18MM", u: "UNIDAD", p: 8500, l: false };
-const sinPrecio = { n: "DOLARES 05/03", u: "UNIDAD", p: null, l: false };
+const metro = { nombre: "TIRANTE 2X4", unidad: "METRO LINEAL", precio: 1000, pideLargo: true };
+const unidad = { nombre: "PLACA 18MM", unidad: "UNIDAD", precio: 8500, pideLargo: false };
+const sinPrecio = { nombre: "DOLARES 05/03", unidad: "UNIDAD", precio: null, pideLargo: false };
 
 const caso = (producto, cantidad, largo) => ({ producto, cantidad, largo });
 

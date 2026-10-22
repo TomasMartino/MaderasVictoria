@@ -12,526 +12,526 @@ window.TV_CATALOGO = {
  },
  "productos": [
   {
-   "n": "ROLLIZO 13-15CM",
-   "u": "METRO LINEAL",
-   "p": 5000,
-   "l": true
+   "nombre": "ROLLIZO 13-15CM",
+   "unidad": "METRO LINEAL",
+   "precio": 5000,
+   "pideLargo": true
   },
   {
-   "n": "POSTE 16-18CM",
-   "u": "METRO LINEAL",
-   "p": 6500,
-   "l": true
+   "nombre": "POSTE 16-18CM",
+   "unidad": "METRO LINEAL",
+   "precio": 6500,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 20-22 CM",
-   "u": "METRO LINEAL",
-   "p": 7500,
-   "l": true
+   "nombre": "VIGA 20-22 CM",
+   "unidad": "METRO LINEAL",
+   "precio": 7500,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 23-25CM",
-   "u": "METRO LINEAL",
-   "p": 8500,
-   "l": true
+   "nombre": "VIGA 23-25CM",
+   "unidad": "METRO LINEAL",
+   "precio": 8500,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 25-30CM",
-   "u": "METRO LINEAL",
-   "p": 9500,
-   "l": true
+   "nombre": "VIGA 25-30CM",
+   "unidad": "METRO LINEAL",
+   "precio": 9500,
+   "pideLargo": true
   },
   {
-   "n": "MACHIMBRE 1/2",
-   "u": "METRO 2",
-   "p": 8500,
-   "l": false
+   "nombre": "MACHIMBRE 1/2",
+   "unidad": "METRO 2",
+   "precio": 8500,
+   "pideLargo": false
   },
   {
-   "n": "MACHIMBRE 3/4 X4 1RA",
-   "u": "METRO 2",
-   "p": 9900,
-   "l": false
+   "nombre": "MACHIMBRE 3/4 X4 1RA",
+   "unidad": "METRO 2",
+   "precio": 9900,
+   "pideLargo": false
   },
   {
-   "n": "MACHIMBRE 3/4 X5 1RA",
-   "u": "METRO 2",
-   "p": 10450,
-   "l": false
+   "nombre": "MACHIMBRE 3/4 X5 1RA",
+   "unidad": "METRO 2",
+   "precio": 10450,
+   "pideLargo": false
   },
   {
-   "n": "MACHIMBRE 1\"X6",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "MACHIMBRE 1\"X6",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "PUNTALES 7-10",
-   "u": "UNIDAD",
-   "p": 3500,
-   "l": false
+   "nombre": "PUNTALES 7-10",
+   "unidad": "UNIDAD",
+   "precio": 3500,
+   "pideLargo": false
   },
   {
-   "n": "PUNTALES 10-12",
-   "u": "UNIDAD",
-   "p": 4500,
-   "l": false
+   "nombre": "PUNTALES 10-12",
+   "unidad": "UNIDAD",
+   "precio": 4500,
+   "pideLargo": false
   },
   {
-   "n": "PUNTALES 13-15",
-   "u": "UNIDAD",
-   "p": 5500,
-   "l": false
+   "nombre": "PUNTALES 13-15",
+   "unidad": "UNIDAD",
+   "precio": 5500,
+   "pideLargo": false
   },
   {
-   "n": "IMPREGNADOS 7-10",
-   "u": "UNIDAD",
-   "p": 6000,
-   "l": false
+   "nombre": "IMPREGNADOS 7-10",
+   "unidad": "UNIDAD",
+   "precio": 6000,
+   "pideLargo": false
   },
   {
-   "n": "IMPREGNADOS 10-12",
-   "u": "UNIDAD",
-   "p": 7000,
-   "l": false
+   "nombre": "IMPREGNADOS 10-12",
+   "unidad": "UNIDAD",
+   "precio": 7000,
+   "pideLargo": false
   },
   {
-   "n": "IMPREGNADOS 13-15",
-   "u": "UNIDAD",
-   "p": 8000,
-   "l": false
+   "nombre": "IMPREGNADOS 13-15",
+   "unidad": "UNIDAD",
+   "precio": 8000,
+   "pideLargo": false
   },
   {
-   "n": "ROLLIZOS IMPREGNADOS 13-15",
-   "u": "METRO LINEAL",
-   "p": 6500,
-   "l": true
+   "nombre": "ROLLIZOS IMPREGNADOS 13-15",
+   "unidad": "METRO LINEAL",
+   "precio": 6500,
+   "pideLargo": true
   },
   {
-   "n": "POSTES IMPREGNADO 16-18",
-   "u": "METRO LINEAL",
-   "p": 8500,
-   "l": true
+   "nombre": "POSTES IMPREGNADO 16-18",
+   "unidad": "METRO LINEAL",
+   "precio": 8500,
+   "pideLargo": true
   },
   {
-   "n": "VIGAS IMPREGNADAS 20-22",
-   "u": "METRO LINEAL",
-   "p": 10000,
-   "l": true
+   "nombre": "VIGAS IMPREGNADAS 20-22",
+   "unidad": "METRO LINEAL",
+   "precio": 10000,
+   "pideLargo": true
   },
   {
-   "n": "MEMBRANA 40KG",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "MEMBRANA 40KG",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "RUBEROID 20M",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "RUBEROID 20M",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "RUBEROID 40M",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "RUBEROID 40M",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "MEMBRANA EN PASTA 20 LTS",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "MEMBRANA EN PASTA 20 LTS",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS 15MM INDUSTRIAL",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICOS 15MM INDUSTRIAL",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS 16MM COMERCIAL",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICOS 16MM COMERCIAL",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS 18MM INDUSTRIAL",
-   "u": "UNIDAD",
-   "p": 30000,
-   "l": false
+   "nombre": "FENOLICOS 18MM INDUSTRIAL",
+   "unidad": "UNIDAD",
+   "precio": 30000,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS 18MM COMERCIAL",
-   "u": "UNIDAD",
-   "p": 34000,
-   "l": false
+   "nombre": "FENOLICOS 18MM COMERCIAL",
+   "unidad": "UNIDAD",
+   "precio": 34000,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS 18MM 1 CARA BUENA",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICOS 18MM 1 CARA BUENA",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "DECK PINO IMPREGNADO",
-   "u": "METRO 2",
-   "p": 28000,
-   "l": false
+   "nombre": "DECK PINO IMPREGNADO",
+   "unidad": "METRO 2",
+   "precio": 28000,
+   "pideLargo": false
   },
   {
-   "n": "TABLAS DE PINO CEP. 3/4X4 3,66",
-   "u": "UNIDAD/M2",
-   "p": null,
-   "l": false
+   "nombre": "TABLAS DE PINO CEP. 3/4X4 3,66",
+   "unidad": "UNIDAD/M2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "TABLAS DE PINO S/C. 1 X 4 X 3,66",
-   "u": "UNIDAD",
-   "p": 4400,
-   "l": false
+   "nombre": "TABLAS DE PINO S/C. 1 X 4 X 3,66",
+   "unidad": "UNIDAD",
+   "precio": 4400,
+   "pideLargo": false
   },
   {
-   "n": "TABLAS DE PINO S/C. 1 X 6 X 3,66",
-   "u": "UNIDAD",
-   "p": 6580,
-   "l": false
+   "nombre": "TABLAS DE PINO S/C. 1 X 6 X 3,66",
+   "unidad": "UNIDAD",
+   "precio": 6580,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 1/2X2 2,20",
-   "u": "UNIDAD",
-   "p": 770,
-   "l": false
+   "nombre": "ALFAJIAS 1/2X2 2,20",
+   "unidad": "UNIDAD",
+   "precio": 770,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 2X1 2.20",
-   "u": "UNIDAD",
-   "p": 1550,
-   "l": false
+   "nombre": "ALFAJIAS 2X1 2.20",
+   "unidad": "UNIDAD",
+   "precio": 1550,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 1X4 2,20",
-   "u": "UNIDAD",
-   "p": 3100,
-   "l": false
+   "nombre": "ALFAJIAS 1X4 2,20",
+   "unidad": "UNIDAD",
+   "precio": 3100,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 1X6 2,20",
-   "u": "UNIDAD",
-   "p": 4600,
-   "l": false
+   "nombre": "ALFAJIAS 1X6 2,20",
+   "unidad": "UNIDAD",
+   "precio": 4600,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 1X8 2,20",
-   "u": "UNIDAD",
-   "p": 6100,
-   "l": false
+   "nombre": "ALFAJIAS 1X8 2,20",
+   "unidad": "UNIDAD",
+   "precio": 6100,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 2X2 2,20",
-   "u": "UNIDAD",
-   "p": 3100,
-   "l": false
+   "nombre": "ALFAJIAS 2X2 2,20",
+   "unidad": "UNIDAD",
+   "precio": 3100,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 2X4 2,20",
-   "u": "UNIDAD",
-   "p": 6150,
-   "l": false
+   "nombre": "ALFAJIAS 2X4 2,20",
+   "unidad": "UNIDAD",
+   "precio": 6150,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 3X3 2,20",
-   "u": "UNIDAD",
-   "p": 6900,
-   "l": false
+   "nombre": "ALFAJIAS 3X3 2,20",
+   "unidad": "UNIDAD",
+   "precio": 6900,
+   "pideLargo": false
   },
   {
-   "n": "VIGA 22X22CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA 22X22CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 18X18CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA 18X18CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ROLLIZO 12/14CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO 12/14CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ROLLIZO 10X10CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO 10X10CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ROLLIZO IMPREG. 12/14CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO IMPREG. 12/14CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "VIGA IMPREGNADA 18/20CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA IMPREGNADA 18/20CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "MACHIMBRE 3/4 S/B",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "MACHIMBRE 3/4 S/B",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 1X4",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X4",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 3X3",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 3X3",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "POSTES 15X15CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "POSTES 15X15CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 20X20 CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA 20X20 CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "POSTES 18X18CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "POSTES 18X18CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "IMPREGNADO 5/7CM",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "IMPREGNADO 5/7CM",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ROLLIZO 12X12CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO 12X12CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ALAMO 1X3",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X3",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 3X2",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 3X2",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "PUNTALES 5/7CM",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "PUNTALES 5/7CM",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 1X6",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X6",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 1X5",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X5",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 1X8",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X8",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 2X3",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 2X3",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "POSTE 16X16CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "POSTE 16X16CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "VIGA 18/20CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA 18/20CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ALAMO 2X6",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 2X6",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 2X4",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 2X4",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 2X5",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 2X5",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALFAJIAS 1X1",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALFAJIAS 1X1",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICOS COMERCIAL 19MM",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICOS COMERCIAL 19MM",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "PINO 1X6",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "PINO 1X6",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "PINO 1X4",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "PINO 1X4",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 1 1/2 X 4",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1 1/2 X 4",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "POSTE 14CMX14CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "POSTE 14CMX14CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "POSTE IMPREGNADOS 15X15CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "POSTE IMPREGNADOS 15X15CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ALAMO 3X3 IMPREGNADOS",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 3X3 IMPREGNADOS",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICO 18MM AGUERCO B PLASTIFICADO 160G",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICO 18MM AGUERCO B PLASTIFICADO 160G",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICO 18MM AGUERCO A PLASTIFICADO 160G",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICO 18MM AGUERCO A PLASTIFICADO 160G",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO IMPREGNADO 3X6",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO IMPREGNADO 3X6",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 2X8",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 2X8",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "FENOLICO",
-   "u": "METRO 2",
-   "p": null,
-   "l": false
+   "nombre": "FENOLICO",
+   "unidad": "METRO 2",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ALAMO 3X4",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 3X4",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "PINO 2X1",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "PINO 2X1",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "VIGA IMPREGNADA 25CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "VIGA IMPREGNADA 25CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ROLLIZO IMPREGNADO 15CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO IMPREGNADO 15CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "ALAMO 1X7",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "ALAMO 1X7",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "MANO DE OBRA",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "MANO DE OBRA",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ROLLIZOS 10/12 CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZOS 10/12 CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   },
   {
-   "n": "LISTONES EUCALIPTO 2X2",
-   "u": "UNIDAD",
-   "p": null,
-   "l": false
+   "nombre": "LISTONES EUCALIPTO 2X2",
+   "unidad": "UNIDAD",
+   "precio": null,
+   "pideLargo": false
   },
   {
-   "n": "ROLLIZO 14/16CM",
-   "u": "METRO LINEAL",
-   "p": null,
-   "l": true
+   "nombre": "ROLLIZO 14/16CM",
+   "unidad": "METRO LINEAL",
+   "precio": null,
+   "pideLargo": true
   }
  ]
 };

@@ -46,6 +46,7 @@ try {
  * documento el estado tal como quedo en pantalla, para poder afirmarlo. */
 const REPORTE = `
 document.addEventListener("DOMContentLoaded", function () {
+  try {
   var filas = [].map.call(document.querySelectorAll(".linea"), function (row) {
     var pista = row.querySelector(".pista");
     return {
@@ -61,6 +62,110 @@ document.addEventListener("DOMContentLoaded", function () {
     };
   });
   var aviso = document.getElementById("aviso");
+
+  /* foto del presupuesto ANTES de tocar la pantalla de productos */
+  var antes = {
+    total: document.getElementById("total").textContent,
+    totalBar: document.getElementById("total-bar").textContent,
+    aviso: aviso.hidden ? "" : aviso.textContent
+  };
+
+  /* ---------- productos: se maneja la pantalla como lo haria el tio ---------- */
+  window.confirm = function () { return true; };
+
+  var porNombre = function (n) {
+    return document.querySelector('#productos-lista .prod-fila[data-nombre="' + n + '"]');
+  };
+  var guardados = function () {
+    try {
+      return JSON.parse(localStorage.getItem("tiovity.productos.v1")).productos;
+    } catch (e) {
+      return [];
+    }
+  };
+  var enviarForm = function () {
+    var form = document.getElementById("form-producto");
+    if (form.requestSubmit) form.requestSubmit();
+    else form.querySelector('button[type="submit"]').click();
+  };
+  var abrirNuevo = function (nombre, precio, stock) {
+    document.getElementById("productos-agregar").click();
+    document.getElementById("p-nombre").value = nombre;
+    document.getElementById("p-precio").value = precio;
+    document.getElementById("p-stock").value = stock;
+    enviarForm();
+  };
+
+  document.querySelector('.navbtn[data-view="productos"]').click();
+
+  var listaAntes = document.querySelectorAll("#productos-lista .prod-fila").length;
+
+  abrirNuevo("TIRANTE DE PRUEBA 2X6", "7.500", "40");
+
+  var filaNueva = porNombre("TIRANTE DE PRUEBA 2X6");
+  var opciones = [].map.call(
+    document.querySelectorAll("#lineas select.prod option"),
+    function (o) { return o.value; },
+  );
+  var guardadosNuevo = guardados().filter(function (p) { return p.nombre === "TIRANTE DE PRUEBA 2X6"; });
+
+  var repProd = {
+    navActivo: document.querySelector(".navbtn.is-active").dataset.view,
+    vistaVisible: !document.getElementById("view-productos").classList.contains("is-hidden"),
+    barraOculta: document.querySelector(".app").classList.contains("app--sin-barra"),
+    listaAntes: listaAntes,
+    listaDespues: document.querySelectorAll("#productos-lista .prod-fila").length,
+    modalCerrado: document.getElementById("modal-producto").hidden,
+    nuevoVisible: !!filaNueva,
+    nuevoEnSelect: opciones.indexOf("TIRANTE DE PRUEBA 2X6") !== -1,
+    nuevoStock: filaNueva ? filaNueva.querySelector(".prod__stock").textContent : "",
+    nuevoPrecio: filaNueva ? filaNueva.querySelector(".prod__precio").textContent : "",
+    guardado: guardadosNuevo.length,
+    guardadoStock: guardadosNuevo.length ? guardadosNuevo[0].stock : null,
+    resumen: document.getElementById("productos-resumen").textContent
+  };
+
+  /* editar el precio de un producto que ya esta en el presupuesto abierto:
+   * la linea tiene que recalcularse sola (2 x 4,50 x 9.000 = 81.000) */
+  porNombre("VIGA 23-25CM").click();
+  document.getElementById("p-precio").value = "9.000";
+  enviarForm();
+  repProd.totalVigaTrasEditar = document.querySelector(".linea .total").textContent;
+  repProd.vigaPrecio = porNombre("VIGA 23-25CM").querySelector(".prod__precio").textContent;
+
+  /* un nombre repetido no puede entrar dos veces */
+  document.getElementById("productos-agregar").click();
+  document.getElementById("p-nombre").value = "viga 23-25cm";
+  document.getElementById("p-precio").value = "1";
+  enviarForm();
+  repProd.errorRepetido = document.getElementById("p-errores").hidden
+    ? ""
+    : document.getElementById("p-errores").textContent;
+  repProd.sinDuplicar = document.querySelectorAll("#productos-lista .prod-fila").length;
+  document.getElementById("p-cancelar").click();
+
+  /* dar de baja un producto que ya esta en el presupuesto abierto: la linea
+   * no se puede vaciar ni perder el total */
+  porNombre("VIGA 23-25CM").click();
+  document.getElementById("p-baja").click();
+  var selViga = document.querySelector("#lineas select.prod");
+  repProd.bajaSelect = selViga.value;
+  repProd.bajaOpcion = selViga.selectedOptions[0].textContent;
+  repProd.bajaTotal = document.querySelector(".linea .total").textContent;
+  repProd.bajaSigueEnCatalogo = !!porNombre("VIGA 23-25CM");
+  porNombre("VIGA 23-25CM").click();
+  document.getElementById("p-baja").click();
+  repProd.reactivado = !!porNombre("VIGA 23-25CM") &&
+    !porNombre("VIGA 23-25CM").classList.contains("prod-fila--baja");
+
+  /* el buscador filtra */
+  var buscador = document.getElementById("productos-buscar");
+  buscador.value = "tirante";
+  buscador.dispatchEvent(new Event("input", { bubbles: true }));
+  repProd.filtrados = document.querySelectorAll("#productos-lista .prod-fila").length;
+  buscador.value = "";
+  buscador.dispatchEvent(new Event("input", { bubbles: true }));
+
   var pre = document.createElement("pre");
   pre.id = "reporte";
   pre.textContent = JSON.stringify({
@@ -68,12 +173,19 @@ document.addEventListener("DOMContentLoaded", function () {
     direccion: document.getElementById("direccion").value,
     telefono: document.getElementById("telefono").value,
     fecha: document.getElementById("fecha").value,
-    total: document.getElementById("total").textContent,
-    totalBar: document.getElementById("total-bar").textContent,
-    aviso: aviso.hidden ? "" : aviso.textContent,
-    filas: filas
+    total: antes.total,
+    totalBar: antes.totalBar,
+    aviso: antes.aviso,
+    filas: filas,
+    productos: repProd
   });
   document.body.appendChild(pre);
+  } catch (err) {
+    var fallo = document.createElement("pre");
+    fallo.id = "reporte";
+    fallo.textContent = JSON.stringify({ error: String((err && err.stack) || err) });
+    document.body.appendChild(fallo);
+  }
 });
 `;
 
@@ -133,6 +245,7 @@ const skip = !EDGE && "Edge no esta instalado";
 const limpio = (v) => (typeof v === "string" ? v.replace(/\u00a0/g, " ") : v);
 
 const r = EDGE ? renderizar() : { filas: [] };
+if (r.error) console.error("REPORTE:", r.error);
 
 test("la pantalla abre con el presupuesto guardado", { skip }, () => {
   assert.equal(r.filas.length, 4, "no se recuperaron las 4 lineas guardadas");
@@ -179,4 +292,50 @@ test("la hoja impresa lleva el nombre pelado y el largo a pedir", { skip }, () =
   assert.equal(r.filas[1].nombreImprenta, "MACHIMBRE 3/4 X4 1RA");
   assert.equal(r.filas[1].pedirImprenta, "");
   assert.equal(r.filas[2].pedirImprenta, "4,00 m");
+});
+
+/* ---------------- productos ---------------- */
+
+const prod = r.productos || {};
+
+test("la seccion de productos lista el catalogo completo", { skip }, () => {
+  assert.equal(prod.navActivo, "productos");
+  assert.equal(prod.vistaVisible, true);
+  assert.equal(prod.barraOculta, true, "el total del presupuesto no debe quedar a la vista en productos");
+  assert.equal(prod.listaAntes, 87);
+  assert.match(limpio(prod.resumen), /^88 productos/);
+  assert.match(limpio(prod.resumen), /31 con precio/);
+});
+
+test("un producto agregado en la pantalla entra al catalogo y al presupuesto", { skip }, () => {
+  assert.equal(prod.nuevoVisible, true);
+  assert.equal(prod.listaDespues, 88);
+  assert.equal(prod.modalCerrado, true, "el formulario tiene que cerrarse al guardar");
+  assert.equal(prod.nuevoEnSelect, true, "el producto nuevo tiene que aparecer en el desplegable");
+  assert.equal(limpio(prod.nuevoPrecio), "$ 7.500");
+  assert.equal(prod.nuevoStock, "40 m");
+  assert.equal(prod.guardado, 1, "el producto nuevo tiene que quedar guardado");
+  assert.equal(prod.guardadoStock, 40);
+});
+
+test("editar un precio recalcula el presupuesto abierto", { skip }, () => {
+  assert.equal(limpio(prod.vigaPrecio), "$ 9.000");
+  assert.equal(limpio(prod.totalVigaTrasEditar), "$ 81.000");
+});
+
+test("un nombre repetido se rechaza con aviso y no duplica", { skip }, () => {
+  assert.match(prod.errorRepetido, /existe/i);
+  assert.equal(prod.sinDuplicar, 88);
+});
+
+test("el buscador de productos filtra la lista", { skip }, () => {
+  assert.equal(prod.filtrados, 1);
+});
+
+test("dar de baja un producto no rompe el presupuesto abierto", { skip }, () => {
+  assert.equal(prod.bajaSelect, "VIGA 23-25CM", "la linea tiene que conservar el producto");
+  assert.match(prod.bajaOpcion, /dado de baja/i, "el desplegable tiene que avisar que esta fuera de lista");
+  assert.equal(limpio(prod.bajaTotal), "$ 81.000", "el total no puede cambiar por dar de baja");
+  assert.equal(prod.bajaSigueEnCatalogo, true, "el producto no se borra del catalogo");
+  assert.equal(prod.reactivado, true, "se tiene que poder volver a activar");
 });

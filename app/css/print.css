@@ -206,3 +206,5 @@ html, body {
 .print-foot strong { color: #2B2118; letter-spacing: 0.08em; }
 
 .pista { font-size: 7.5pt; color: #875E37; }
+
+#view-productos, #view-ventas, #view-balance { display: none !important; }
