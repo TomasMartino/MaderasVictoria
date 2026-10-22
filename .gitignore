@@ -1,0 +1,8 @@
+# Basura de Office (archivos de bloqueo cuando el Excel queda abierto)
+~$*
+*.tmp
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
