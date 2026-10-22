@@ -932,6 +932,7 @@
     }
 
     if (habia) avisar("Se recuperó el presupuesto de este equipo");
+    mostrarVista("presupuesto");
   }
 
   function iniciar() {
