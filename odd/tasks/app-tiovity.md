@@ -16,6 +16,12 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 - **S8** — "Mi tío no sabe nada de Excel": no syntax traps. Accept `4,2` and `4.2`; every error names the line.
 - **S9** — Same math as `PRESUPUESTO.xlsx`: `J = ROUNDUP(largo/paso)*paso` with `paso = PRECIOS!H1 = 0,5`; `M = cantidad × largo a pedir × precio` for METRO LINEAL, `cantidad × precio` otherwise; `SIN PRECIO` never sums; `REVISAR LARGO` replaces the total; prices are "más IVA".
 - **S10** — Delivery: printable sheet / PDF with logo, and a WhatsApp message with detail and total.
+- **S11** — A products section reachable from the rail showing every product with price, unit, whether it asks for length, stock and state (activo / sin precio / sin stock / dado de baja).
+- **S12** — Products can be added and edited from the app: name, unit, price, "pide largo" (the formula) and stock. Names must be unique (case-insensitive) and non-empty; a price may be empty ("sin precio"), never negative.
+- **S13** — Stock is a quantity available per product. Today it is a manual baseline; etapa 2 decrements it automatically with every sale. `sin contar` (null) is different from `0`: the first shows "—", the second "SIN STOCK".
+- **S14** — `PRESUPUESTO.xlsx` seeds the catalog. Products edited in the app are marked and **never** silently overwritten by a re-import: importing from the sheet adds new products and updates only products not edited in the app, and never deletes.
+- **S15** — A catalog change repaints the quote's product list and recalculates an open quote, so a price edit is reflected immediately (no stale totals).
+- **S16** — "Dar de baja" instead of deleting: the product leaves the quote list but stays in the catalog and in already saved quotes.
 
 ## Tasks
 
@@ -30,6 +36,12 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 | T7 | Screen smoke test in real browser | S2, S8, S9 | inline | done | `tests/pantalla.test.mjs`, 5 tests |
 | T8 | Docs: app guide + root README pointer | S7, S8 | inline | done | `app/README.md`, `README.md` §1 |
 | T9 | Repo + work-unit commits | — | inline | done | `git init -b main`, 4 commits by unit, no push |
+| T10 | Catalog data layer (pure): shape, merge, add/edit/baja, validation | S12, S13, S14, S16 | inline | pending | `app/js/productos.js` + `tests/productos.test.mjs` |
+| T11 | Readable catalog field names (generator, engine, app, tests) | S12, S14 | inline | pending | `catalogo.js` migrates `n/u/p/l` → `nombre/unidad/precio/pideLargo` |
+| T12 | Products screen: list, search, unit filter, stock and states | S11 | inline | pending | `#view-productos` |
+| T13 | Product form: add/edit with the formula and stock, with validation | S12, S13 | inline | pending | modal |
+| T14 | Wiring: rebuild quote options + recalc on catalog change; import from sheet | S14, S15 | inline | pending | `app.js` |
+| T15 | Tests + docs for the products section | S11–S16 | inline | pending | smoke test + `app/README.md` |
 
 ## Log
 
@@ -43,3 +55,9 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 - **L8** — Mobile overflow: the native `select` imposes its widest option as min-content and blew the 2-column card grid past 390px. Fix: `minmax(0, 1fr)` tracks. Verified with a real 390px iframe viewport (headless Edge ignores `--window-size` below ~500): `scrollWidth === clientWidth === 390`, zero overflowing elements.
 - **L9** — Verification: `node --test "tests/*.test.mjs"` → 34/34 pass. Visual review at 1440×1000, 1366×768, 390×844 (iframe), A4 print render, and a real `--print-to-pdf` file (122 KB).
 - **L10** — Open product decisions carried from the Excel work (not app bugs): charge cut length (4,50) vs real (4,20); `DOLARES 05/03` pesos or dollars; `TABLAS DE PINO CEP. 3/4X4` dual price; 57 products without price; m² not computed automatically.
+
+- **L11** — Request: "me gustaría que haya un apartado de productos o stock, que visualice todo eso y pueda seguir agregando productos sin problemas, que elija el precio, la fórmula y todo lo que tenga que considerar como vienen trabajando, después sí arranca con la parte 2". Asked one question (catalog only vs stock with sales vs manual stock). Answer: **"Catálogo + stock que baja solo con las ventas"**. Implemented as: stock field today (manual baseline), etapa 2 decrements it. No parallel stock ledger.
+- **L12** — Price-source conflict resolved in code, not by asking: `catalogo.js` is the **seed**, the app keeps an editable copy, and `fusionar` adds new sheet products, updates unedited prices and never overwrites or deletes. `n/u/p/l` migrated to `nombre/unidad/precio/pideLargo` now, before Firestore documents are designed.
+- **L13** — Bug caught by looking at the rendered screen: editing only the **stock** set the old `editado` flag, which showed a false "PRECIO PROPIO" badge and would have frozen that price against the sheet forever. Fix: the flag is now `propio` and only the three sheet-owned fields (precio/unidad/pideLargo) set it; the regression has its own test.
+- **L14** — Two UI defects from the mobile capture: the 4th nav item ("Balance") was cut at 390 px and the summary left the word "stock" orphaned on its own line. Fix: at <=520 px the nav wraps to its own row with 4 even items; the summary wraps as whole items.
+- **L15** — Verification: `node --test "tests/*.test.mjs"` → **59/59** pass, including 5 UI tests that drive the real screen (add product, price edit recalculation, duplicate rejection, search, actionbar hidden outside the quote). Visual check: 1440x1050, 1366x768 (notebook), 390x844 (iframe), modal open, real Edge headless.

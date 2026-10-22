@@ -6,17 +6,18 @@ La misma cuenta que hace `PRESUPUESTO.xlsx`, pero en pantalla, sin fórmulas que
 
 ---
 
-## 1. Qué hace hoy (etapa 1: el presupuesto)
+## 1. Qué hace hoy (etapa 1: presupuesto y productos)
 
 | Se hace | Cómo |
 |---|---|
-| Elegir el producto | Desplegable con los **87 productos** del Excel (no se puede escribir cualquier cosa) |
+| Elegir el producto | Desplegable con los **87 productos** del catálogo (no se puede escribir cualquier cosa) |
 | Cargar cantidad y largo | Se acepta `4,2` y también `4.2` — el error que rompía el Excel acá no existe |
 | Ver el largo a cortar | Debajo del largo aparece **se pide 4,50 m** (la columna LARGO A PEDIR del Excel, que había que buscar a mano) |
 | Ver el total | Se actualiza en cada cambio, con `PRECIOS MÁS IVA` siempre a la vista |
 | Guardar | Solo, en este equipo. El puntito verde de abajo a la izquierda dice el estado |
 | Imprimir o PDF | Botón `Imprimir / PDF` → sale la hoja con el logo, los datos del cliente y la tabla |
 | Mandar por WhatsApp | Botón `WhatsApp` → abre el mensaje armado con el detalle y el total |
+| Ver y editar productos | Pestaña `Productos`: los 87 con precio, unidad, fórmula y stock. Se agregan y editan ahí, sin tocar el Excel |
 
 ### Las tres protecciones que trae del Excel
 
@@ -41,19 +42,28 @@ Esto es importante, para no confundirse:
 
 ---
 
-## 3. De dónde salen los precios
+## 3. De dónde salen los precios (y qué pasa si los cambiás en la app)
 
-**De ningún lado nuevo: del mismo Excel.** La app no tiene una lista propia.
+La planilla es el punto de partida, no una jaula. Hay dos caminos y los dos son válidos:
+
+**Camino corto, desde la app:** `Productos` → `Editar` → precio nuevo → `Guardar`. Queda marcado como **Precio propio**.
+
+**Camino masivo, desde el Excel:** se cambia la hoja `PRECIOS` columna C, se corre `python _scripts\gen_catalogo.py` y se recarga la app.
 
 ```
-PRESUPUESTO.xlsx  →  hoja PRECIOS  →  _scripts/gen_catalogo.py  →  app/js/catalogo.js
+PRESUPUESTO.xlsx → hoja PRECIOS → gen_catalogo.py → app/js/catalogo.js  (semilla)
+                                                              ↓
+                                              la app guarda su copia editable
 ```
 
-Para cambiar un precio:
+La regla que evita perder plata:
 
-1. Se cambia en `PRESUPUESTO.xlsx`, hoja oculta `PRECIOS`, columna C (igual que siempre).
-2. Se corre: `python _scripts\gen_catalogo.py`
-3. Se recarga la app.
+- `Traer de la planilla` **agrega** los productos nuevos, **actualiza** los precios que nadie tocó y **respeta** los que tienen `Precio propio`.
+- **Nunca borra** un producto creado en la app.
+- Tocar solo el **stock** no marca el precio como propio: la planilla lo sigue actualizando.
+- La app avisa cuántos agregó, actualizó y respetó, en la misma pantalla.
+
+**El stock no existe en el Excel.** Es siempre de la app: hoy se carga a mano y en la etapa 2 lo descuenta cada venta.
 
 El generador copia también el paso de corte (`PRECIOS!H1`, hoy 0,5 m) y los teléfonos. Si cambia el paso, la app cambia sola.
 
@@ -90,9 +100,10 @@ node --test "tests/*.test.mjs"
 |---|---|
 | `tests/engine.test.mjs` | La cuenta: redondeo al paso de corte, coma y punto, `REVISAR LARGO`, `SIN PRECIO`, el mensaje de WhatsApp |
 | `tests/catalogo.test.mjs` | Que el catálogo generado tenga los 87 productos, 30 con precio, 26 por metro lineal y los teléfonos |
-| `tests/pantalla.test.mjs` | Abre la app de verdad en Edge, carga un presupuesto y verifica los totales en pantalla |
+| `tests/productos.test.mjs` | Que un precio editado en la app no se pise, que el stock no se pierda y que traer la planilla nunca borre |
+| `tests/pantalla.test.mjs` | Abre la app de verdad en Edge, carga un presupuesto y verifica totales, alta de producto y recálculo en pantalla |
 
-El tercero es el que importa: los dos primeros pueden pasar mientras la pantalla muestra cualquier cosa. Ya pasó dos veces durante el desarrollo y las dos las cazó ese test.
+El de pantalla es el que importa: los otros pueden pasar mientras la pantalla muestra cualquier cosa. Ya pasó dos veces durante el desarrollo y las dos las cazó ese test.
 
 ---
 
@@ -105,6 +116,7 @@ app/
   css/print.css       la hoja impresa / PDF
   js/catalogo.js      GENERADO desde el Excel — no editar a mano
   js/engine.js        la cuenta, sin pantalla: se puede probar solo
+  js/productos.js     qué es un producto válido y cómo se fusiona con la planilla
   js/app.js           dibuja, guarda y conecta los botones
   assets/logo.png     el logo real, sacado del Excel
 tests/                las pruebas

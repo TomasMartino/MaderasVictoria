@@ -13,14 +13,14 @@ Guía de uso y de límites. Si algo de acá no coincide con lo que ves en el Exc
 | `PRESUPUESTO.xlsx` | Hacer el presupuesto de un cliente | Sí, todos los días |
 | `LISTA DE PRECIOS.xlsx` | Lista de precios para imprimir o mandar | Solo para imprimir |
 | `Ingresos Y Gastos Semanales (1).xlsx` | Cargar ventas y ver el balance | Sí: ventas y egresos |
-| `app\` | El presupuesto en pantalla (ver `app\README.md`) | Sí, se abre con doble clic |
+| `app\` | El presupuesto y la lista de productos en pantalla (ver `app\README.md`) | Sí, se abre con doble clic |
 | `tests\` | Pruebas automáticas de la app | No |
 | `respaldo 2026-10-22\` | Copia de los archivos originales | **No** |
 | `_scripts\` | Programas que generan los Excel y el catálogo de la app | **No** (es solo respaldo técnico) |
 
 > **La app no reemplaza a los Excel todavía.** Hoy hace el presupuesto en pantalla, con los mismos precios de `PRESUPUESTO.xlsx`. Las ventas y el balance siguen en `Ingresos Y Gastos Semanales (1).xlsx`.
 >
-> Los precios se siguen cambiando **en el Excel**; después se corre `python _scripts\gen_catalogo.py` y la app los toma.
+> Los precios se pueden cambiar **en la app** (`Productos` → `Editar`) o **en el Excel**. Si se cambia en la planilla, después se corre `python _scripts\gen_catalogo.py` y la app actualiza solo los productos que nadie tocó a mano: lo que se editó en la app no se pisa, y no se borra nada.
 
 ---
 
