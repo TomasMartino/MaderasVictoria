@@ -22,6 +22,10 @@
     firebase.initializeApp(firebaseConfig);
     window.TV_AUTH = firebase.auth();
     window.TV_DB = firebase.firestore();
+    /* Colecciones de la etapa 2: ventas y gastos.
+     * Se crean automáticamente en Firestore al escribir el primer documento. */
+    window.TV_VENTAS = firebase.firestore().collection("ventas");
+    window.TV_GASTOS = firebase.firestore().collection("gastos");
   } catch (e) {
     /* Firebase no disponible: la app sigue funcionando en modo local */
   }

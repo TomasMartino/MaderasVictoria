@@ -1062,3 +1062,51 @@ button, input, select { font: inherit; color: inherit; }
   .rail__nav { width: 100%; gap: 4px; overflow: visible; }
   .navbtn { flex: 1 1 0; justify-content: center; padding: 8px 4px; font-size: 12px; }
 }
+
+/* ================= VENTAS (etapa 2) ================= */
+
+#venta-form.modal {
+  padding: 18px;
+}
+
+#venta-form .modal__caja {
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
+#venta-form .campo__input[type="date"] {
+  padding: 9px 12px;
+}
+
+#venta-form .modal__error {
+  margin-top: 0;
+}
+
+/* ================= BALANCE (etapa 2) ================= */
+
+#balance-tabla .prod-fila {
+  border-top: 1px solid var(--linea);
+}
+
+#balance-tabla .prod-fila--head {
+  background: var(--papel);
+}
+
+#balance-tabla .prod__stock {
+  font-weight: 700;
+}
+
+#balance-tabla .prod__formula {
+  color: var(--tinta-2);
+}
+
+@media screen and (max-width: 900px) {
+  .prod-filtros label.buscador > span.campo__label { display: none; }
+  .prod-filtros .buscador input { font-size: 14px; padding: 10px; }
+  #balance-tabla .prod-fila {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 4px 8px;
+    padding: 10px 0;
+  }
+  #balance-tabla .prod-fila--head { display: none; }
+}

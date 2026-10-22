@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
@@ -205,16 +205,57 @@
 
       <!-- ============ VENTAS ============ -->
       <section id="view-ventas" class="view is-hidden">
-        <div class="hoja hoja--prox">
-          <span class="chip chip--rojo">Etapa 2</span>
-          <h2>Ventas del día</h2>
-          <p>Acá van a cargar cada venta —fecha, medio de pago, detalle y monto— y va a aparecer
-             al instante en la pantalla del balance de los otros.</p>
-          <ul class="lista-prox">
-            <li>Ventas compartidas entre los cuatro, en tiempo real.</li>
-            <li>Cada carga firmada con el usuario que la hizo.</li>
-            <li>Se anulan con motivo, no se borran.</li>
-          </ul>
+        <div class="prod-panel">
+          <header class="prod-head">
+            <div class="prod-head__titulo">
+              <h1>Ventas del día</h1>
+              <p class="prod-resumen" id="ventas-resumen"></p>
+            </div>
+            <div class="prod-head__acciones">
+              <button id="ventas-nueva" class="btn btn--brand" type="button">+ Nueva venta</button>
+            </div>
+          </header>
+
+          <div class="prod-filtros">
+            <label class="buscador">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
+              <input id="ventas-buscar" type="search" placeholder="Buscar venta…" autocomplete="off" aria-label="Buscar venta">
+            </label>
+          </div>
+
+          <div id="venta-form" class="modal" hidden>
+            <form class="modal__caja" id="form-venta" role="dialog" aria-modal="true" aria-labelledby="venta-titulo" novalidate>
+              <h2 class="modal__titulo" id="venta-titulo">Nueva venta</h2>
+              <label class="campo">
+                <span class="campo__label">Fecha</span>
+                <input id="venta-fecha" class="campo__input" type="date" required>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Medio de pago</span>
+                <select id="venta-medio" class="campo__input" required>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                </select>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Detalle</span>
+                <input id="venta-detalle" class="campo__input" type="text" placeholder="Ej: Venta de rollizos" required>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Monto</span>
+                <input id="venta-monto" class="campo__input" type="text" inputmode="decimal" placeholder="8.500" required>
+              </label>
+              <p class="modal__error" id="venta-errores" hidden></p>
+              <div class="modal__pie">
+                <button type="button" class="btn btn--ghost" id="venta-cancelar">Cancelar</button>
+                <span class="modal__espacio"></span>
+                <button type="submit" class="btn btn--brand">Guardar venta</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="ventas-lista"></div>
         </div>
       </section>
 

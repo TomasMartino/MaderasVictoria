@@ -47,6 +47,9 @@
     lineas: [],
   };
 
+  var ventas = [];
+  var gastos = [];
+
   var proximoId = 1;
   var guardarTimer = null;
 
@@ -108,6 +111,212 @@
     refrescarSelects();
     recalcular();
     pintarProductos();
+  }
+
+  /* ---------- ventas y gastos (etapa 2) ---------- */
+
+  /* Carga una venta en Firestore y en el estado local. */
+  function guardarVenta(venta) {
+    if (!usaFirebase || !usuarioActual) {
+      /* modo local */
+      ventas.push(venta);
+      guardarVentasLocales();
+      return;
+    }
+    try {
+      db.collection("ventas").add({
+        fecha: venta.fecha,
+        monto: venta.monto,
+        medioPago: venta.medioPago,
+        detalle: venta.detalle,
+        usuario: usuarioActual.email || usuarioActual.uid,
+        uid: usuarioActual.uid,
+        creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        anulada: false,
+      });
+    } catch (e) {
+      ventas.push(venta);
+      guardarVentasLocales();
+    }
+  }
+
+  /* Carga un gasto en Firestore y en el estado local. */
+  function guardarGasto(gasto) {
+    if (!usaFirebase || !usuarioActual) {
+      gastos.push(gasto);
+      guardarGastosLocales();
+      return;
+    }
+    try {
+      db.collection("gastos").add({
+        fecha: gasto.fecha,
+        monto: gasto.monto,
+        concepto: gasto.concepto,
+        categoria: gasto.categoria,
+        usuario: usuarioActual.email || usuarioActual.uid,
+        uid: usuarioActual.uid,
+        creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+        anulada: false,
+      });
+    } catch (e) {
+      gastos.push(gasto);
+      guardarGastosLocales();
+    }
+  }
+
+  /* Anula una venta: la marca como anulada con motivo. No se borra. */
+  function anularVenta(id, motivo) {
+    if (!usaFirebase || !usuarioActual) {
+      var v = ventas.find(function (x) { return x.id === id; });
+      if (v) {
+        v.anulada = true;
+        v.motivoAnulacion = motivo;
+        v.anuladaPor = usuarioActual ? (usuarioActual.email || usuarioActual.uid) : "local";
+        v.anuladaEn = new Date().toISOString();
+        guardarVentasLocales();
+      }
+      return;
+    }
+    try {
+      db.collection("ventas").doc(id).update({
+        anulada: true,
+        motivoAnulacion: motivo,
+        anuladaPor: usuarioActual.email || usuarioActual.uid,
+        anuladaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      var v = ventas.find(function (x) { return x.id === id; });
+      if (v) {
+        v.anulada = true;
+        v.motivoAnulacion = motivo;
+        v.anuladaPor = usuarioActual ? (usuarioActual.email || usuarioActual.uid) : "local";
+        v.anuladaEn = new Date().toISOString();
+        guardarVentasLocales();
+      }
+    }
+  }
+
+  /* Anula un gasto: lo marca como anulado con motivo. No se borra. */
+  function anularGasto(id, motivo) {
+    if (!usaFirebase || !usuarioActual) {
+      var g = gastos.find(function (x) { return x.id === id; });
+      if (g) {
+        g.anulada = true;
+        g.motivoAnulacion = motivo;
+        g.anuladaPor = usuarioActual ? (usuarioActual.email || usuarioActual.uid) : "local";
+        g.anuladaEn = new Date().toISOString();
+        guardarGastosLocales();
+      }
+      return;
+    }
+    try {
+      db.collection("gastos").doc(id).update({
+        anulada: true,
+        motivoAnulacion: motivo,
+        anuladaPor: usuarioActual.email || usuarioActual.uid,
+        anuladaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      var g = gastos.find(function (x) { return x.id === id; });
+      if (g) {
+        g.anulada = true;
+        g.motivoAnulacion = motivo;
+        g.anuladaPor = usuarioActual ? (usuarioActual.email || usuarioActual.uid) : "local";
+        g.anuladaEn = new Date().toISOString();
+        guardarGastosLocales();
+      }
+    }
+  }
+
+  /* Escucha cambios en ventas y gastos en tiempo real. */
+  function escucharVentasYGastos() {
+    if (!usaFirebase || !usuarioActual) return;
+
+    db.collection("ventas").onSnapshot(function (snap) {
+      ventas = snap.docs.map(function (doc) {
+        var d = doc.data();
+        return { id: doc.id, fecha: d.fecha, monto: d.monto, medioPago: d.medioPago,
+                 detalle: d.detalle, usuario: d.usuario, uid: d.uid,
+                 anulada: d.anulada === true, motivoAnulacion: d.motivoAnulacion };
+      });
+      pintarVentas();
+      pintarBalance();
+    });
+
+    db.collection("gastos").onSnapshot(function (snap) {
+      gastos = snap.docs.map(function (doc) {
+        var d = doc.data();
+        return { id: doc.id, fecha: d.fecha, monto: d.monto, concepto: d.concepto,
+                 categoria: d.categoria, usuario: d.usuario, uid: d.uid,
+                 anulada: d.anulada === true, motivoAnulacion: d.motivoAnulacion };
+      });
+      pintarGastos();
+      pintarBalance();
+    });
+  }
+
+  /* Calcula el balance en un rango de fechas: ventas suman, gastos restan. */
+  function calcularBalance(fechaDesde, fechaHasta) {
+    var totalVentas = 0;
+    var totalGastos = 0;
+    var ventasPorFecha = {};
+    var gastosPorFecha = {};
+
+    ventas.forEach(function (v) {
+      if (v.anulada) return;
+      if (v.fecha < fechaDesde || v.fecha > fechaHasta) return;
+      totalVentas += v.monto;
+      if (!ventasPorFecha[v.fecha]) ventasPorFecha[v.fecha] = 0;
+      ventasPorFecha[v.fecha] += v.monto;
+    });
+
+    gastos.forEach(function (g) {
+      if (g.anulada) return;
+      if (g.fecha < fechaDesde || g.fecha > fechaHasta) return;
+      totalGastos += g.monto;
+      if (!gastosPorFecha[g.fecha]) gastosPorFecha[g.fecha] = 0;
+      gastosPorFecha[g.fecha] += g.monto;
+    });
+
+    return {
+      totalVentas: totalVentas,
+      totalGastos: totalGastos,
+      balance: totalVentas - totalGastos,
+      ventasPorFecha: ventasPorFecha,
+      gastosPorFecha: gastosPorFecha,
+    };
+  }
+
+  function guardarVentasLocales() {
+    try {
+      localStorage.setItem("tiovity.ventas.v1", JSON.stringify({ version: 1, ventas: ventas }));
+    } catch (e) {}
+  }
+
+  function guardarGastosLocales() {
+    try {
+      localStorage.setItem("tiovity.gastos.v1", JSON.stringify({ version: 1, gastos: gastos }));
+    } catch (e) {}
+  }
+
+  function cargarVentasLocales() {
+    try {
+      var crudo = localStorage.getItem("tiovity.ventas.v1");
+      if (crudo) {
+        var d = JSON.parse(crudo);
+        if (d && Array.isArray(d.ventas)) ventas = d.ventas;
+      }
+    } catch (e) {}
+  }
+
+  function cargarGastosLocales() {
+    try {
+      var crudo = localStorage.getItem("tiovity.gastos.v1");
+      if (crudo) {
+        var d = JSON.parse(crudo);
+        if (d && Array.isArray(d.gastos)) gastos = d.gastos;
+      }
+    } catch (e) {}
   }
 
   /* ---------- catalogo en el desplegable ---------- */
@@ -572,6 +781,30 @@
   var elPErrores = $("#p-errores");
   var elPBaja = $("#p-baja");
 
+  /* ================= VENTAS ================= */
+
+  var elVentasResumen = $("#ventas-resumen");
+  var elVentasLista = $("#ventas-lista");
+  var elVentasBuscar = $("#ventas-buscar");
+  var elVentaForm = $("#venta-form");
+  var elFormVenta = $("#form-venta");
+  var elVentaFecha = $("#venta-fecha");
+  var elVentaMedio = $("#venta-medio");
+  var elVentaDetalle = $("#venta-detalle");
+  var elVentaMonto = $("#venta-monto");
+  var elVentaErrores = $("#venta-errores");
+  var elVentaCancelar = $("#venta-cancelar");
+
+  var filtroVentas = { texto: "" };
+
+  /* ================= BALANCE ================= */
+
+  var elBalanceResumen = $("#balance-resumen");
+  var elBalanceTabla = $("#balance-tabla");
+  var elBalanceDesde = $("#balance-desde");
+  var elBalanceHasta = $("#balance-hasta");
+  var elBalanceCalcular = $("#balance-calcular");
+
   var filtro = { texto: "", unidad: "" };
   var editando = null;
   var unidadForm = "METRO LINEAL";
@@ -667,6 +900,106 @@
     elProdLista.innerHTML = visibles.length
       ? visibles.map(filaProductoHTML).join("")
       : '<p class="prod-vacio">No hay productos que coincidan.</p>';
+  }
+
+  /* ---------- ventas ---------- */
+
+  function moneda(n) {
+    return typeof n === "number" ? TV.pesos(n) : "—";
+  }
+
+  function pintarVentas() {
+    if (!elVentasLista) return;
+
+    var txt = filtroVentas.texto ? filtroVentas.texto.toLowerCase() : "";
+    var visibles = ventas.filter(function (v) {
+      if (txt && (v.detalle || "").toLowerCase().indexOf(txt) === -1) return false;
+      return true;
+    });
+
+    var total = 0;
+    visibles.forEach(function (v) { if (!v.anulada) total += v.monto; });
+
+    elVentasResumen.innerHTML =
+      '<span>' + ventas.length + ' venta' + (ventas.length === 1 ? '' : 's') + '</span>' +
+      '<i aria-hidden="true">·</i><span>' + visibles.length + ' mostradas</span>' +
+      '<i aria-hidden="true">·</i><span>Total: ' + moneda(total) + '</span>';
+
+    if (!visibles.length) {
+      elVentasLista.innerHTML = '<p class="prod-vacio">No hay ventas que coincidan.</p>';
+      return;
+    }
+
+    elVentasLista.innerHTML = visibles.map(function (v) {
+      var anuladaHtml = v.anulada
+        ? '<span class="prod__marca prod__marca--rojo">Anulada</span>'
+        : '';
+      var usuarioHtml = v.usuario ? '<span style="font-size:11px;color:var(--tinta-2);">'+ escapar(v.usuario) +'</span>' : '';
+      return '<div class="prod-fila' + (v.anulada ? ' prod-fila--baja' : '') + '">' +
+        '<div class="prod__nombre-col">' +
+          '<div class="prod__nombre">' + escapar(v.detalle) + "</div>" +
+          '<span class="prod__unidad">' + escapar(v.fecha) + ' · ' + escapar(v.medioPago) + '</span>' +
+          '<span class="prod__marcas">' + anuladaHtml + usuarioHtml + '</span>' +
+        '</div>' +
+        '<span class="prod__precio">' + moneda(v.monto) + '</span>' +
+        '<span class="prod__formula">' + (v.anulada ? 'Anulada: ' + escapar(v.motivoAnulacion || '') : 'Venta') + '</span>' +
+        '<span class="prod__stock prod__stock--vacio">—</span>' +
+        (v.anulada ? '' :
+          '<span class="prod__accion">' +
+            '<button class="btn btn--ghost btn-anular" type="button" data-id="' + v.id + '">Anular</button>' +
+          '</span>') +
+      '</div>';
+    }).join("");
+  }
+
+  function pintarGastos() {
+    /* Se usa internamente por el balance; no tiene pantalla propia en esta etapa */
+  }
+
+  function pintarBalance() {
+    if (!elBalanceTabla) return;
+
+    var desde = elBalanceDesde ? elBalanceDesde.value : "";
+    var hasta = elBalanceHasta ? elBalanceHasta.value : "";
+
+    if (!desde || !hasta) {
+      elBalanceTabla.innerHTML = '<p style="color:var(--tinta-2);">Seleccioná un rango de fechas para ver el balance.</p>';
+      elBalanceResumen.textContent = "";
+      return;
+    }
+
+    var b = calcularBalance(desde, hasta);
+
+    var filas = [];
+    var fechas = new Set();
+    Object.keys(b.ventasPorFecha).forEach(function (f) { fechas.add(f); });
+    Object.keys(b.gastosPorFecha).forEach(function (f) { fechas.add(f); });
+    var fechasOrdenadas = Array.from(fechas).sort();
+
+    fechasOrdenadas.forEach(function (f) {
+      var v = b.ventasPorFecha[f] || 0;
+      var g = b.gastosPorFecha[f] || 0;
+      filas.push('<div class="prod-fila">' +
+        '<div class="prod__nombre-col">' +
+          '<div class="prod__nombre">' + escapar(f) + "</div>" +
+          '<span class="prod__unidad">Ventas · Gastos</span>' +
+        '</div>' +
+        '<span class="prod__precio">' + TV.pesos(v) + '</span>' +
+        '<span class="prod__formula">− ' + TV.pesos(g) + '</span>' +
+        '<span class="prod__stock prod__stock--vacio">' + TV.pesos(v - g) + '</span>' +
+        '</div>');
+    });
+
+    elBalanceTabla.innerHTML = filas.length
+      ? '<div class="prod-fila prod-fila--head" aria-hidden="true">' +
+        '<span>Fecha</span><span class="c-der">Ventas</span><span>Gastos</span><span class="c-der">Saldo</span></div>' +
+        filas.join("")
+      : '<p class="prod-vacio">Sin movimientos en este rango.</p>';
+
+    elBalanceResumen.innerHTML =
+      '<span>Ventas: ' + TV.pesos(b.totalVentas) + '</span>' +
+      '<i aria-hidden="true">·</i><span>Gastos: ' + TV.pesos(b.totalGastos) + '</span>' +
+      '<i aria-hidden="true">·</i><span>Balance: ' + TV.pesos(b.balance) + '</span>';
   }
 
   /* ---------- formulario de producto ---------- */
@@ -877,6 +1210,103 @@
     });
   }
 
+  /* ---------- ventas ---------- */
+
+  function enlazarVentas() {
+    if (!elVentasLista) return;
+
+    elVentasBuscar.addEventListener("input", function () {
+      filtroVentas.texto = elVentasBuscar.value;
+      pintarVentas();
+    });
+
+    $("#ventas-nueva").addEventListener("click", function () {
+      elVentaFecha.value = hoyISO();
+      elVentaMonto.value = "";
+      elVentaDetalle.value = "";
+      elVentaMedio.value = "Efectivo";
+      elVentaErrores.hidden = true;
+      elVentaForm.hidden = false;
+      elVentaFecha.focus();
+    });
+
+    elVentaCancelar.addEventListener("click", function () {
+      elVentaForm.hidden = true;
+    });
+
+    elVentaForm.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      elVentaErrores.hidden = true;
+
+      var fecha = elVentaFecha.value;
+      var medio = elVentaMedio.value;
+      var detalle = elVentaDetalle.value.trim();
+      var montoRaw = elVentaMonto.value;
+      var monto = TV.parseNumero(montoRaw);
+
+      if (!fecha) {
+        elVentaErrores.textContent = "Elegí una fecha";
+        elVentaErrores.hidden = false;
+        return;
+      }
+      if (!detalle) {
+        elVentaErrores.textContent = "Poné un detalle";
+        elVentaErrores.hidden = false;
+        return;
+      }
+      if (monto === null || !(monto > 0)) {
+        elVentaErrores.textContent = "Monto inválido";
+        elVentaErrores.hidden = false;
+        return;
+      }
+
+      var venta = { fecha: fecha, monto: monto, medioPago: medio, detalle: detalle };
+      guardarVenta(venta);
+      elVentaForm.hidden = true;
+      avisar("Venta cargada");
+    });
+
+    elVentasLista.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".btn-anular");
+      if (!btn) return;
+      var id = btn.dataset.id;
+      var motivo = prompt("Motivo de la anulación:");
+      if (motivo === null) return;
+      motivo = motivo.trim();
+      if (!motivo) {
+        avisar("El motivo es obligatorio para anular");
+        return;
+      }
+      anularVenta(id, motivo);
+      avisar("Venta anulada");
+    });
+
+    elVentaForm.addEventListener("click", function (ev) {
+      if (ev.target === elVentaForm) elVentaForm.hidden = true;
+    });
+  }
+
+  /* ---------- balance ---------- */
+
+  function enlazarBalance() {
+    if (!elBalanceCalcular) return;
+
+    elBalanceCalcular.addEventListener("click", function () {
+      pintarBalance();
+    });
+
+    elBalanceDesde.addEventListener("change", function () {
+      if (elBalanceHasta.value && elBalanceDesde.value > elBalanceHasta.value) {
+        elBalanceHasta.value = elBalanceDesde.value;
+      }
+    });
+    elBalanceHasta.addEventListener("change", function () {
+      if (elBalanceDesde.value && elBalanceHasta.value < elBalanceDesde.value) {
+        elBalanceDesde.value = elBalanceHasta.value;
+      }
+    });
+  }
+
   /* ---------- navegacion ---------- */
 
   function mostrarVista(vista) {
@@ -927,6 +1357,14 @@
     enlazarProductos();
     pintarProductos();
     enlazarCerrarSesion();
+    enlazarVentas();
+    enlazarBalance();
+
+    cargarVentasLocales();
+    cargarGastosLocales();
+    pintarVentas();
+    pintarGastos();
+    pintarBalance();
 
     if (cambios) {
       elProdReporte.hidden = false;
@@ -946,6 +1384,7 @@
         if (user) {
           iniciarApp();
           escucharPresupuesto();
+          escucharVentasYGastos();
         } else {
           mostrarLogin();
         }
