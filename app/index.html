@@ -47,7 +47,33 @@
     <main class="content">
 
       <!-- ============ PRESUPUESTO ============ -->
-      <section id="view-presupuesto" class="view">
+            <!-- ============ LOGIN ============ -->
+      <section id="view-login" class="view is-hidden">
+        <div class="login-panel">
+          <div class="login-caja">
+            <img src="assets/logo.png" alt="Maderas Victoria" width="120">
+            <h1>Iniciar sesión</h1>
+            <p>Ingresá con tu cuenta para ver los presupuestos compartidos en tiempo real.</p>
+            <form id="form-login" novalidate>
+              <label class="campo">
+                <span class="campo__label">Correo electrónico</span>
+                <input id="login-email" class="campo__input" type="email" placeholder="tu@correo.com" autocomplete="email">
+              </label>
+              <label class="campo">
+                <span class="campo__label">Contraseña</span>
+                <input id="login-password" class="campo__input" type="password" placeholder="••••••••" autocomplete="current-password">
+              </label>
+              <p class="modal__error" id="login-errores" hidden></p>
+              <div class="modal__pie">
+                <span class="modal__espacio"></span>
+                <button type="submit" class="btn btn--brand">Entrar</button>
+              </div>
+            </form>
+            <p class="prod-pie">¿No tenés cuenta? Pedile a tu primo que te agregue.</p>
+          </div>
+        </div>
+      </section>
+<section id="view-presupuesto" class="view">
         <div class="hoja">
 
           <div class="print-head">
@@ -276,6 +302,10 @@
   </form>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/catalogo.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/productos.js"></script>

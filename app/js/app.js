@@ -14,6 +14,13 @@
   var CLAVE = "tiovity.presupuesto.v1";
   var CLAVE_PRODUCTOS = "tiovity.productos.v1";
 
+  /* ---------- Firebase (opcional) ---------- */
+  var auth = window.TV_AUTH;
+  var db = window.TV_DB;
+  var usaFirebase = !!(auth && db);
+  var usuarioActual = null;
+  var ignorandoFirestore = false;
+
   var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
 
   var elLineas = $("#lineas");
@@ -193,6 +200,7 @@
         elEstado.textContent = "No se pudo guardar";
         elDot.dataset.estado = "error";
       }
+      guardarEnFirestore();
     };
     if (ahora) escribir();
     else guardarTimer = setTimeout(escribir, 350);
@@ -446,7 +454,55 @@
     });
   }
 
-  /* ---------- acciones del presupuesto ---------- */
+
+  /* ---------- Firestore: guardar y escuchar ---------- */
+
+  function guardarEnFirestore() {
+    if (!usaFirebase || !usuarioActual || ignorandoFirestore) return;
+    try {
+      db.collection("presupuestos").doc("compartido").set({
+        cliente: estado.cliente,
+        direccion: estado.direccion,
+        telefono: estado.telefono,
+        fecha: estado.fecha,
+        tipo: estado.tipo,
+        lineas: estado.lineas,
+        actualizado: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {
+      /* silencioso: si falla la red, el localStorage sigue vigente */
+    }
+  }
+
+  function escucharPresupuesto() {
+    if (!usaFirebase || !usuarioActual) return;
+    db.collection("presupuestos").doc("compartido").onSnapshot(function (doc) {
+      if (!doc.exists) return;
+      var d = doc.data() || {};
+      ignorandoFirestore = true;
+      estado.cliente = d.cliente || "";
+      estado.direccion = d.direccion || "";
+      estado.telefono = d.telefono || "";
+      estado.fecha = d.fecha || hoyISO();
+      estado.tipo = d.tipo || "PRESUPUESTO";
+      estado.lineas = (d.lineas || []).map(function (l) {
+        return {
+          id: proximoId++,
+          producto: l.producto && PRODUCTOS.buscar(catalogo, l.producto) ? l.producto : null,
+          cantidad: l.cantidad == null ? "" : l.cantidad,
+          largo: l.largo == null ? "" : l.largo,
+        };
+      });
+      $("#cliente").value = estado.cliente;
+      $("#direccion").value = estado.direccion;
+      $("#telefono").value = estado.telefono;
+      elFecha.value = estado.fecha;
+      marcarTipo(estado.tipo);
+      pintarTodo();
+      ignorandoFirestore = false;
+    });
+  }
+
 
   function avisar(mensaje) {
     elToast.textContent = mensaje;
@@ -826,12 +882,13 @@
       v.classList.toggle("is-hidden", v.id !== "view-" + vista);
     });
     document.querySelector(".app").classList.toggle("app--sin-barra", vista !== "presupuesto");
+    document.querySelector(".app").classList.toggle("app--login", vista === "login");
     if (vista !== "productos" && !elModal.hidden) cerrarForm();
   }
 
   /* ---------- arranque ---------- */
 
-  function iniciar() {
+  function iniciarApp() {
     var cambios = cargarCatalogo();
 
     var habia = cargar();
@@ -876,5 +933,36 @@
     if (habia) avisar("Se recuperó el presupuesto de este equipo");
   }
 
+  function iniciar() {
+    if (usaFirebase) {
+      auth.onAuthStateChanged(function (user) {
+        usuarioActual = user;
+        if (user) {
+          iniciarApp();
+          escucharPresupuesto();
+        } else {
+          mostrarLogin();
+        }
+      });
+      return;
+    }
+    iniciarApp();
+  }
+
+  function mostrarLogin() {
+    mostrarVista("login");
+    $("#form-login").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var email = $("#login-email").value;
+      var password = $("#login-password").value;
+      $("#login-errores").hidden = true;
+      auth.signInWithEmailAndPassword(email, password).catch(function (err) {
+        $("#login-errores").hidden = false;
+        $("#login-errores").textContent = err.message || "No se pudo iniciar sesión.";
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", iniciar);
 })();
+
