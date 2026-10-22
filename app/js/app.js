@@ -105,14 +105,18 @@
 
   /* ---------- catalogo en el desplegable ---------- */
 
+  /* El stock va entre parentesis y es solo informativo: no se descuenta al
+   * presupuestar ni al vender (se maneja a mano en Productos). */
   function etiquetaProducto(p) {
-    var extra = "";
-    if (p.stock === 0) extra = " · SIN STOCK";
-    else if (typeof p.stock === "number") extra = " · quedan " + stockTexto(p);
-
-    if (p.precio === null) return p.nombre + " · sin precio" + extra;
-    var sufijo = p.pideLargo ? "/m" : p.unidad === "METRO 2" ? "/m²" : "";
-    return p.nombre + " · " + TV.pesos(p.precio) + sufijo + extra;
+    var precio = p.precio === null
+      ? "sin precio"
+      : TV.pesos(p.precio) + (p.pideLargo ? "/m" : p.unidad === "METRO 2" ? "/m²" : "");
+    var stock = p.stock === 0
+      ? " (sin stock)"
+      : typeof p.stock === "number"
+        ? " (" + stockTexto(p) + ")"
+        : "";
+    return p.nombre + " · " + precio + stock;
   }
 
   /* El producto elegido tiene que seguir apareciendo aunque esté dado de baja:
