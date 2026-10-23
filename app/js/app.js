@@ -20,6 +20,7 @@
   var usaFirebase = !!(auth && db);
   var usuarioActual = null;
   var ignorandoFirestore = false;
+  var escuchandoVentasGastos = false;
 
   var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
 
@@ -228,9 +229,11 @@
     }
   }
 
-  /* Escucha cambios en ventas y gastos en tiempo real. */
+  /* Escucha cambios en ventas y gastos en tiempo real. Solo una vez por sesión. */
   function escucharVentasYGastos() {
+    if (escuchandoVentasGastos) return;
     if (!usaFirebase || !usuarioActual) return;
+    escuchandoVentasGastos = true;
 
     db.collection("ventas").onSnapshot(function (snap) {
       ventas = snap.docs.map(function (doc) {
@@ -769,6 +772,8 @@
   var elProdReporte = $("#productos-reporte");
   var elProdBuscar = $("#productos-buscar");
   var elProdUnidad = $("#productos-unidad");
+  var elProdPrecioMax = $("#productos-precio-max");
+  var elProdStockFiltro = $("#productos-stock-filtro");
 
   var elModal = $("#modal-producto");
   var elForm = $("#form-producto");
@@ -795,7 +800,12 @@
   var elVentaErrores = $("#venta-errores");
   var elVentaCancelar = $("#venta-cancelar");
 
-  var filtroVentas = { texto: "" };
+    var elVentasDesde = ventas-desde;
+  var elVentasHasta = ventas-hasta;
+  var elVentasMedioFiltro = ventas-medio-filtro;
+  var elVentasHoy = ventas-hoy;
+
+  var filtroVentas = { texto: "", fechaDesde: "", fechaHasta: "", medio: "" };
 
   /* ================= BALANCE ================= */
 
@@ -897,6 +907,27 @@
       unidad: filtro.unidad,
       bajas: true,
     });
+
+    /* filtros adicionales: precio máximo y stock */
+    var precioMaxRaw = elProdPrecioMax ? elProdPrecioMax.value : "";
+    var precioMax = precioMaxRaw ? TV.parseNumero(precioMaxRaw) : null;
+    var stockFiltro = elProdStockFiltro ? elProdStockFiltro.value : "";
+
+    visibles = visibles.filter(function (p) {
+      if (precioMax !== null && typeof p.precio === "number" && p.precio > precioMax) {
+        return false;
+      }
+      if (stockFiltro === "con") {
+        if (typeof p.stock !== "number" || p.stock <= 0) return false;
+      } else if (stockFiltro === "sin") {
+        if (p.stock === 0 || p.stock === null) return false;
+        if (typeof p.stock !== "number" || p.stock <= 0) return false;
+      } else if (stockFiltro === "sincontar") {
+        if (p.stock !== null && p.stock !== undefined) return false;
+      }
+      return true;
+    });
+
     elProdLista.innerHTML = visibles.length
       ? visibles.map(filaProductoHTML).join("")
       : '<p class="prod-vacio">No hay productos que coincidan.</p>';
@@ -912,8 +943,14 @@
     if (!elVentasLista) return;
 
     var txt = filtroVentas.texto ? filtroVentas.texto.toLowerCase() : "";
+    var fd = filtroVentas.fechaDesde;
+    var fh = filtroVentas.fechaHasta;
+    var med = filtroVentas.medio;
     var visibles = ventas.filter(function (v) {
       if (txt && (v.detalle || "").toLowerCase().indexOf(txt) === -1) return false;
+      if (fd && v.fecha < fd) return false;
+      if (fh && v.fecha > fh) return false;
+      if (med && v.medioPago !== med) return false;
       return true;
     });
 
@@ -1144,6 +1181,14 @@
       pintarProductos();
     });
 
+    elProdPrecioMax.addEventListener("input", function () {
+      pintarProductos();
+    });
+
+    elProdStockFiltro.addEventListener("change", function () {
+      pintarProductos();
+    });
+
     elProdLista.addEventListener("click", function (ev) {
       var fila = ev.target.closest(".prod-fila");
       if (!fila) return;
@@ -1220,6 +1265,35 @@
       pintarVentas();
     });
 
+    elVentasDesde.addEventListener("change", function () {
+      filtroVentas.fechaDesde = elVentasDesde.value;
+      pintarVentas();
+    });
+
+    elVentasHasta.addEventListener("change", function () {
+      filtroVentas.fechaHasta = elVentasHasta.value;
+      pintarVentas();
+    });
+
+    elVentasMedioFiltro.addEventListener("click", function (ev) {
+      var b = ev.target.closest(".tipo");
+      if (!b) return;
+      elVentasMedioFiltro.querySelectorAll(".tipo").forEach(function (o) {
+        o.classList.toggle("is-active", o === b);
+      });
+      filtroVentas.medio = b.dataset.medio || "";
+      pintarVentas();
+    });
+
+    elVentasHoy.addEventListener("click", function () {
+      var hoy = hoyISO();
+      elVentasDesde.value = hoy;
+      elVentasHasta.value = hoy;
+      filtroVentas.fechaDesde = hoy;
+      filtroVentas.fechaHasta = hoy;
+      pintarVentas();
+    });
+
     $("#ventas-nueva").addEventListener("click", function () {
       elVentaFecha.value = hoyISO();
       elVentaMonto.value = "";
@@ -1238,6 +1312,12 @@
       ev.preventDefault();
       elVentaErrores.hidden = true;
 
+      var btnSubmit = elVentaForm.querySelector('button[type="submit"]');
+      if (btnSubmit.dataset.enviando === "1") return;
+      btnSubmit.dataset.enviando = "1";
+      btnSubmit.textContent = "Guardando…";
+      btnSubmit.disabled = true;
+
       var fecha = elVentaFecha.value;
       var medio = elVentaMedio.value;
       var detalle = elVentaDetalle.value.trim();
@@ -1247,16 +1327,25 @@
       if (!fecha) {
         elVentaErrores.textContent = "Elegí una fecha";
         elVentaErrores.hidden = false;
+        btnSubmit.dataset.enviando = "0";
+        btnSubmit.textContent = "Guardar venta";
+        btnSubmit.disabled = false;
         return;
       }
       if (!detalle) {
         elVentaErrores.textContent = "Poné un detalle";
         elVentaErrores.hidden = false;
+        btnSubmit.dataset.enviando = "0";
+        btnSubmit.textContent = "Guardar venta";
+        btnSubmit.disabled = false;
         return;
       }
       if (monto === null || !(monto > 0)) {
         elVentaErrores.textContent = "Monto inválido";
         elVentaErrores.hidden = false;
+        btnSubmit.dataset.enviando = "0";
+        btnSubmit.textContent = "Guardar venta";
+        btnSubmit.disabled = false;
         return;
       }
 
@@ -1264,6 +1353,9 @@
       guardarVenta(venta);
       elVentaForm.hidden = true;
       avisar("Venta cargada");
+      btnSubmit.dataset.enviando = "0";
+      btnSubmit.textContent = "Guardar venta";
+      btnSubmit.disabled = false;
     });
 
     elVentasLista.addEventListener("click", function (ev) {

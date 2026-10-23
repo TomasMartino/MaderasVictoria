@@ -179,6 +179,19 @@
               <button class="tipo" data-unidad="UNIDAD">Unidad</button>
               <button class="tipo" data-unidad="METRO 2">Metro 2</button>
             </div>
+            <label class="buscador">
+              <span class="campo__label">Precio máx.</span>
+              <input id="productos-precio-max" type="text" inputmode="decimal" placeholder="máx. precio">
+            </label>
+            <label class="buscador">
+              <span class="campo__label">Stock</span>
+              <select id="productos-stock-filtro" class="campo__input">
+                <option value="">Todos</option>
+                <option value="con">Con stock</option>
+                <option value="sin">Sin stock</option>
+                <option value="sincontar">Sin contar</option>
+              </select>
+            </label>
           </div>
 
           <div class="prod-tabla">
@@ -221,6 +234,21 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
               <input id="ventas-buscar" type="search" placeholder="Buscar venta…" autocomplete="off" aria-label="Buscar venta">
             </label>
+            <label class="buscador">
+              <span class="campo__label">Desde</span>
+              <input id="ventas-desde" type="date">
+            </label>
+            <label class="buscador">
+              <span class="campo__label">Hasta</span>
+              <input id="ventas-hasta" type="date">
+            </label>
+            <div class="tipos tipos--start" id="ventas-medio-filtro" role="group" aria-label="Filtrar por medio de pago">
+              <button class="tipo is-active" data-medio="">Todos</button>
+              <button class="tipo" data-medio="Efectivo">Efectivo</button>
+              <button class="tipo" data-medio="Transferencia">Transferencia</button>
+              <button class="tipo" data-medio="Tarjeta">Tarjeta</button>
+            </div>
+            <button id="ventas-hoy" class="btn btn--ghost" type="button">Hoy</button>
           </div>
 
           <div id="venta-form" class="modal" hidden>
