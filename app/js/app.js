@@ -229,6 +229,40 @@
     }
   }
 
+  /* Borra TODAS las ventas y gastos activos (pide confirmación doble).
+   * Es la única excepción a la regla de "no se borra": el tío pidió poder
+   * empezar de cero. EnFirebase borra también los documentos de la nube. */
+  function limpiarTodo() {
+    var primera = window.confirm("Esto borra TODAS las ventas y gastos guardados (en este dispositivo y en la nube). ¿Seguro que querés continuar?");
+    if (!primera) return;
+    var segunda = window.confirm("Confirmación final: los datos borrados no se pueden recuperar. ¿Borrar todo?");
+    if (!segunda) return;
+
+    if (usaFirebase && usuarioActual) {
+      db.collection("ventas").get().then(function (snap) {
+        var batch = db.batch();
+        snap.forEach(function (doc) { batch.delete(doc.ref); });
+        return batch.commit();
+      }).catch(function () {});
+      db.collection("gastos").get().then(function (snap) {
+        var batch = db.batch();
+        snap.forEach(function (doc) { batch.delete(doc.ref); });
+        return batch.commit();
+      }).catch(function () {});
+      /* El onSnapshot refresca la vista cuando la nube termina de borrar. */
+    }
+
+    /* Modo local o mientras llega el snapshot: dejamos el array vacío ya. */
+    ventas = []; gastos = [];
+    try {
+      localStorage.removeItem("tiovity.ventas.v1");
+      localStorage.removeItem("tiovity.gastos.v1");
+    } catch (e) {}
+    pintarVentas();
+    pintarGastos();
+    pintarBalance();
+  }
+
   /* Escucha cambios en ventas y gastos en tiempo real. Solo una vez por sesión. */
   function escucharVentasYGastos() {
     if (escuchandoVentasGastos) return;
@@ -1163,6 +1197,28 @@
     avisar(eraEdicion ? "Producto actualizado" : "Producto agregado");
   }
 
+  function descargarPlantilla() {
+    var filas = [];
+    filas.push("Nombre,Unidad,Precio,Pide Largo,Stock");
+    catalogo.forEach(function (p) {
+      var nombre = p.nombre || "";
+      var unidad = p.unidad || "";
+      var precio = typeof p.precio === "number" ? p.precio : "";
+      var pideLargo = p.pideLargo ? "SI" : "NO";
+      var stock = p.stock !== null && p.stock !== undefined ? p.stock : "";
+      filas.push(nombre + "," + unidad + "," + precio + "," + pideLargo + "," + stock);
+    });
+    var csv = filas.join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = "plantilla-productos-maderas-victoria.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    avisar("Plantilla descargada");
+  }
+
   function enlazarProductos() {
     if (!elProdLista) return;
 
@@ -1214,6 +1270,10 @@
       refrescarCatalogo();
       elProdReporte.hidden = false;
       elProdReporte.textContent = reporteCambios(r.cambios);
+    });
+
+    $("#productos-descargar-plantilla").addEventListener("click", function () {
+      descargarPlantilla();
     });
 
     elPUnidad.addEventListener("click", function (ev) {
@@ -1302,6 +1362,10 @@
       elVentaErrores.hidden = true;
       elVentaForm.hidden = false;
       elVentaFecha.focus();
+    });
+
+    $("#ventas-limpiar").addEventListener("click", function () {
+      limpiarTodo();
     });
 
     elVentaCancelar.addEventListener("click", function () {
