@@ -880,6 +880,8 @@
   var elBalanceTabla = $("#balance-tabla");
   var elBalanceMesSel = $("#balance-mes-sel");
   var elBalanceAnio = $("#balance-anio");
+  var elBalanceSemana = $("#balance-semana");
+  var elBalanceQuitar = $("#balance-quitar");
   var elBalanceExportar = $("#balance-exportar");
   var elBalanceAplicar = $("#balance-aplicar");
   var elGastoNuevo = $("#gasto-nuevo");
@@ -1260,7 +1262,7 @@
       }
     }
 
-    return { lineas: lineas, mesCompleto: mesCompleto };
+    return { lineas: lineas, mesCompleto: mesCompleto, bloques: bloquesDeLineas(lineas) };
   }
 
   /* Rango del mes elegido en el select de mes y el campo de año.
@@ -1322,44 +1324,124 @@
       "</tr>";
   }
 
+  /* Divide las líneas en bloques por semana: filas de días hasta cada
+   * Total Semanal. Los totales (Total Mensual / Total del período) no
+   * pertenecen a ningún bloque. */
+  function bloquesDeLineas(lineas) {
+    var bloques = [];
+    var actual = null;
+    lineas.forEach(function (l) {
+      if (l.tipo === "dia") {
+        if (!actual) {
+          actual = [];
+          bloques.push(actual);
+        }
+        actual.push(l);
+      } else if (l.tipo === "semana" && actual) {
+        actual.push(l);
+        actual = null;
+      }
+    });
+    return bloques;
+  }
+
+  function fechaCorta(f) {
+    var p = f.split("-");
+    return Number(p[2]) + "/" + Number(p[1]);
+  }
+
+  /* Recarga las opciones del selector de semana según el mes elegido,
+   * conservando la elección si sigue existiendo. */
+  function refrescarOpcionesSemana(b) {
+    if (!elBalanceSemana) return;
+    var previo = elBalanceSemana.value;
+    var html = '<option value="">Todo el mes</option>';
+    (b.bloques || []).forEach(function (bloq, i) {
+      var dias = bloq.filter(function (l) { return l.tipo === "dia"; });
+      var a = dias.length ? fechaCorta(dias[0].fecha) : "";
+      var z = dias.length ? fechaCorta(dias[dias.length - 1].fecha) : "";
+      html += '<option value="' + i + '">Semana ' + (i + 1) + " · " + a + " al " + z + "</option>";
+    });
+    elBalanceSemana.innerHTML = html;
+    var existe = Array.prototype.some.call(elBalanceSemana.options, function (o) {
+      return o.value === previo;
+    });
+    elBalanceSemana.value = existe ? previo : "";
+  }
+
+  /* Lo que la tabla muestra ahora: lo manda igual al CSV de exportación. */
+  var balanceVisibles = [];
+
   function pintarBalance() {
     if (!elBalanceTabla) return;
 
-    /* Un solo mes por vez, como la hoja del Excel */
     var r = rangoDeSeleccion();
     var desde = r.desde;
     var hasta = r.hasta;
 
     var b = construirBalance(desde, hasta);
-    var titulo = MESES_ES[Number(desde.split("-")[1]) - 1] + " " + desde.split("-")[0];
+    refrescarOpcionesSemana(b);
 
-    if (!b.lineas.length) {
+    /* Filtro de semana: arriba la elegida y abajo le sigue la próxima */
+    var visibles = b.lineas;
+    var etiquetaSemana = "";
+    var sel = elBalanceSemana ? elBalanceSemana.value : "";
+    if (sel !== "" && b.bloques && b.bloques.length) {
+      var n = Number(sel);
+      var v = [];
+      if (b.bloques[n]) v = v.concat(b.bloques[n]);
+      if (b.bloques[n + 1]) v = v.concat(b.bloques[n + 1]);
+      if (v.length) {
+        visibles = v;
+        etiquetaSemana = b.bloques[n + 1]
+          ? " · Semanas " + (n + 1) + " y " + (n + 2)
+          : " · Semana " + (n + 1) + " (última del mes)";
+      }
+    }
+    balanceVisibles = visibles;
+
+    var titulo = MESES_ES[Number(desde.split("-")[1]) - 1] + " " + desde.split("-")[0] + etiquetaSemana;
+
+    if (!visibles.length) {
       elBalanceTabla.innerHTML = '<p class="prod-vacio">Sin movimientos este mes.</p>';
       elBalanceResumen.textContent = titulo;
       if (elBalanceExportar) elBalanceExportar.hidden = true;
       return;
     }
 
-    var enBlanco = b.mesCompleto;
     elBalanceTabla.innerHTML =
       '<div class="tabla-scroll"><table class="tabla-balance"><caption>' + escapar(titulo) + "</caption>" + cabeceraBalance() +
-      "<tbody>" + b.lineas.map(function (l) { return filaBalanceHTML(l, enBlanco); }).join("") + "</tbody></table></div>";
+      "<tbody>" + visibles.map(function (l) { return filaBalanceHTML(l, true); }).join("") + "</tbody></table></div>";
 
-    var t = b.lineas[b.lineas.length - 1];
+    /* Totales de la vista: suma de los Total Semanal visibles */
+    var ingresos = 0;
+    var egresos = 0;
+    visibles.forEach(function (l) {
+      if (l.tipo === "semana") {
+        ingresos += l.ingresos;
+        egresos += l.egresos;
+      }
+    });
+    var final = visibles[visibles.length - 1];
+    if (final.tipo === "mes" || final.tipo === "total") {
+      ingresos = final.ingresos;
+      egresos = final.egresos;
+    }
+
     elBalanceResumen.innerHTML =
       "<span>" + escapar(titulo) + "</span>" +
-      '<i aria-hidden="true">·</i><span>Ingresos: ' + numeroCorto(t.ingresos) + "</span>" +
-      '<i aria-hidden="true">·</i><span>Egresos: ' + numeroCorto(t.egresos) + "</span>" +
-      '<i aria-hidden="true">·</i><span>Resultado: ' + numeroCorto(t.neto) + "</span>";
+      '<i aria-hidden="true">·</i><span>Ingresos: ' + numeroCorto(ingresos) + "</span>" +
+      '<i aria-hidden="true">·</i><span>Egresos: ' + numeroCorto(egresos) + "</span>" +
+      '<i aria-hidden="true">·</i><span>Resultado: ' + numeroCorto(ingresos - egresos) + "</span>";
     if (elBalanceExportar) elBalanceExportar.hidden = false;
   }
 
-  /* Exporta el balance tal cual se ve, a un CSV que abre Excel. */
+  /* Exporta al CSV exactamente lo que muestra la tabla en pantalla. */
   function exportarBalance(desde, hasta) {
-    var b = construirBalance(desde, hasta);
+    if (!balanceVisibles.length) return;
     var filas = ["Fecha,Dia,Ventas,Gastos,Impuestos,Sueldos,Proveedores,Total Ingresos,Total Egresos,Resultado Neto"];
-    b.lineas.forEach(function (l) {
-      var enBlanco = b.mesCompleto && l.tipo === "dia";
+    balanceVisibles.forEach(function (l) {
+      var enBlanco = l.tipo === "dia";
       function num(campo) {
         var v = l[campo];
         return (enBlanco && !v) ? "" : String(v);
@@ -1757,6 +1839,10 @@
       pintarBalance();
     });
 
+    elBalanceSemana.addEventListener("change", function () {
+      pintarBalance();
+    });
+
     elBalanceAnio.addEventListener("change", function () {
       pintarBalance();
     });
@@ -1767,6 +1853,14 @@
     elBalanceAplicar.addEventListener("click", function () {
       pintarBalance();
       avisar("Balance aplicado: " + MESES_ES[Number(elBalanceMesSel.value) - 1] + " " + elBalanceAnio.value);
+    });
+
+    elBalanceQuitar.addEventListener("click", function () {
+      elBalanceSemana.value = "";
+      elBalanceMesSel.value = String(new Date().getMonth() + 1);
+      elBalanceAnio.value = String(new Date().getFullYear());
+      pintarBalance();
+      avisar("Filtro restablecido: mes en curso completo");
     });
 
     /* Valores por defecto: mes y año en curso, editables */

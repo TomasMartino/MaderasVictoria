@@ -326,7 +326,14 @@
               <span class="campo__label">Año</span>
               <input id="balance-anio" type="number" min="2000" max="2100" step="1" inputmode="numeric">
             </label>
+            <label class="buscador">
+              <span class="campo__label">Semana</span>
+              <select id="balance-semana">
+                <option value="">Todo el mes</option>
+              </select>
+            </label>
             <button id="balance-aplicar" class="btn btn--brand" type="button">Aplicar</button>
+            <button id="balance-quitar" class="btn btn--ghost" type="button">Quitar filtro</button>
           </div>
 
           <div id="gasto-form" class="modal" hidden>
