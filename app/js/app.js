@@ -1500,15 +1500,19 @@
 
   function mostrarLogin() {
     mostrarVista("login");
-    $("#form-login").addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      var email = $("#login-email").value;
-      var password = $("#login-password").value;
-      $("#login-errores").hidden = true;
-      auth.signInWithEmailAndPassword(email, password).catch(function (err) {
-        $("#login-errores").hidden = false;
-        $("#login-errores").textContent = err.message || "No se pudo iniciar sesión.";
-      });
+    var form = $("#form-login");
+    form.removeEventListener("submit", manejarLogin);
+    form.addEventListener("submit", manejarLogin);
+  }
+
+  function manejarLogin(ev) {
+    ev.preventDefault();
+    var email = $("#login-email").value;
+    var password = $("#login-password").value;
+    $("#login-errores").hidden = true;
+    auth.signInWithEmailAndPassword(email, password).catch(function (err) {
+      $("#login-errores").hidden = false;
+      $("#login-errores").textContent = err.message || "No se pudo iniciar sesión.";
     });
   }
 
