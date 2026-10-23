@@ -117,3 +117,17 @@ test("encabezado PRODUCTO tambien se reconoce", () => {
   const c = r.cambios.find((x) => x.campo === "precio");
   assert.ok(c, " precio detectado con header PRODUCTO");
 });
+
+/* Nace del archivo real LISTA DE PRECIOS.xlsx: PRODUCTO + PRECIO sin
+ * rótulos de unidad/largo/stock. Los campos que la planilla no trae
+ * no proponen cambios (antes tiraba 12 "si -> no" falsos). */
+test("sin columna de largo/stock no propone esos cambios", () => {
+  const sinLargo = [
+    ["   ", "PRODUCTO", "PRECIO"],
+    [null, "MDF 18 MM", 9000],
+    [null, "MELAMINA", 12500],
+  ];
+  const r = PLANILLA.revisar(sinLargo, catalogo);
+  assert.equal(r.cambios.length, 0);
+  assert.equal(r.ignoradas.length, 0);
+});

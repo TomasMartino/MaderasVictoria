@@ -60,6 +60,29 @@
     return cand;
   }
 
+  /* Algunas planillas (LISTA DE PRECIOS) tienen encabezado incompleto: se
+   * ve PRODUCTO y PRECIO pero las unidades aparecen debajo, en una columna
+   * sin rotulo. Con los datos de las primeras filas se infiere la columna. */
+  function ajustarMapa(filas, mapaInicial) {
+    var mapa = mapaInicial;
+    if (!mapa || mapa.nombre === undefined) return mapa;
+    if (mapa.unidad !== undefined && mapa.precio !== undefined) return mapa;
+    for (var i = 1; i < Math.min(12, filas.length); i++) {
+      var f = filas[i];
+      if (!f) continue;
+      for (var c = 0; c < f.length; c++) {
+        var t = PRODUCTOS.sinAcentos(String(f[c] === null ? "" : f[c]).toLowerCase()).trim();
+        if (!t) continue;
+        if (c !== mapa.nombre && (PRODUCTOS.UNIDADES.indexOf(t.toUpperCase()) !== -1)) {
+          if (mapa.unidad === undefined) mapa = Object.assign({}, mapa, { unidad: c });
+          break;
+        }
+      }
+      if (mapa.unidad !== undefined && mapa.precio !== undefined) return mapa;
+    }
+    return mapa;
+  }
+
   function textoValor(v, campo, formatear) {
     if (campo === "pideLargo") return v ? "s\u00ed" : "no";
     if (v === null || v === undefined) {
@@ -77,16 +100,32 @@
    * en la planilla). Tambien devuelve las filas ignoradas por unidad
    * invalida. Solo se emiten propuestas: nada muta el catalogo. */
   function revisar(filas, catalogo, formatear) {
+    filas = filas || [];
     var mapa = null;
-    var candidatos = [];
-    (filas || []).forEach(function (fila) {
-      if (mapa === null) {
-        mapa = mapearColumnas(fila);
-        return;
+    var desde = 0;
+    var i;
+    var j;
+    for (i = 0; i < filas.length; i++) {
+      mapa = mapearColumnas(filas[i]);
+      if (mapa.nombre !== undefined) {
+        desde = i + 1;
+        break;
       }
-      var c = productoDeFila(mapa, fila);
-      if (c) candidatos.push(c);
-    });
+    }
+    var sinEncabezado = !(mapa && mapa.nombre !== undefined);
+    if (sinEncabezado) {
+      mapa = null;
+    } else {
+      mapa = ajustarMapa(filas, mapa);
+    }
+
+    var candidatos = [];
+    if (mapa) {
+      for (j = desde; j < filas.length; j++) {
+        var c = productoDeFila(mapa, filas[j]);
+        if (c) candidatos.push(c);
+      }
+    }
 
     var cambios = [];
     var vistos = {};
@@ -133,10 +172,13 @@
       if (c.unidad && c.unidad !== actual.unidad && PRODUCTOS.UNIDADES.indexOf(c.unidad) !== -1) {
         pushCampo("unidad", { de: actual.unidad, a: c.unidad });
       }
-      if (c.pideLargo !== actual.pideLargo) {
+      /* LAS planillas sin columna no proponen ese cambio: un campo que la
+       * planilla no trae no es un cambio a denegar, es informacion que
+       * simplemente no esta en el archivo subido. */
+      if (mapa.largo !== undefined && c.pideLargo !== actual.pideLargo) {
         pushCampo("pideLargo", { de: actual.pideLargo, a: c.pideLargo });
       }
-      if (c.stock !== null && c.stock !== actual.stock) {
+      if (mapa.stock !== undefined && c.stock !== null && c.stock !== actual.stock) {
         pushCampo("stock", { de: actual.stock, a: c.stock });
       }
     });
@@ -155,7 +197,7 @@
       }
     });
 
-    return { cambios: cambios, ignoradas: ignoradas };
+    return { cambios: cambios, ignoradas: ignoradas, sinEncabezado: sinEncabezado };
   }
 
   root.TV_PLANILLA = {

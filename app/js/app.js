@@ -1197,13 +1197,18 @@
       try {
         var hojas = XLSX.read(lector.result, { type: "array" });
         var nombreHoja = hojas.SheetNames.indexOf("PRECIOS") !== -1 ? "PRECIOS" : hojas.SheetNames[0];
+        console.log("Excel subido: hoja elegida =", nombreHoja, "· hojas =", hojas.SheetNames.join(", "));
         var filas = XLSX.utils.sheet_to_json(hojas.Sheets[nombreHoja], { header: 1, defval: null });
         var r = PLANILLA.revisar(filas, catalogo, numeroCorto);
         revisionExcel = r.cambios;
         elModalExcel.hidden = false;
         elExcelError.hidden = true;
         pintarRevision();
-        if (revisionExcel.length === 0) {
+        if (r.sinEncabezado) {
+          revisionExcel = [];
+          elExcelError.hidden = false;
+          elExcelError.textContent = "No encontré una columna NOMBRE/PRODUCTO en la hoja \"" + nombreHoja + "\". Probá con la planilla PRESUPUESTO.xlsx (hoja PRECIOS).";
+        } else if (revisionExcel.length === 0) {
           elExcelError.hidden = false;
           elExcelError.textContent = "El Excel coincide con el catálogo: no hay cambios para revisar.";
         } else if (r.ignoradas.length) {
@@ -1211,7 +1216,8 @@
           elExcelError.textContent = "Filas ignoradas (falta unidad válida): " + r.ignoradas.join(", ");
         }
       } catch (e) {
-        avisar("El archivo no se pudo leer como Excel");
+        console.error("Lectura del Excel:", e);
+        avisar("El archivo no se pudo leer como Excel (" + (e && e.message ? e.message : "abre la consola F12 e informame") + ")");
       }
     };
     lector.readAsArrayBuffer(archivo);
