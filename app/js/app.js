@@ -21,6 +21,11 @@
   var usuarioActual = null;
   var ignorandoFirestore = false;
   var escuchandoVentasGastos = false;
+  var escuchandoPresupuesto = false;
+  var suscripcionPresupuesto = null;
+  var suscripcionVentas = null;
+  var suscripcionGastos = null;
+  var appIniciada = false;
 
   var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
 
@@ -134,6 +139,13 @@
         uid: usuarioActual.uid,
         creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
         anulada: false,
+      }).catch(function (err) {
+        /* Si la subida a la nube falla, al menos la venta queda visible acá */
+        ventas.push(venta);
+        guardarVentasLocales();
+        pintarVentas();
+        pintarBalance();
+        avisar("La venta no se subió a la nube: quedó en este equipo");
       });
     } catch (e) {
       ventas.push(venta);
@@ -158,6 +170,12 @@
         uid: usuarioActual.uid,
         creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
         anulada: false,
+      }).catch(function (err) {
+        gastos.push(gasto);
+        guardarGastosLocales();
+        pintarGastos();
+        pintarBalance();
+        avisar("El gasto no se subió a la nube: quedó en este equipo");
       });
     } catch (e) {
       gastos.push(gasto);
@@ -269,7 +287,7 @@
     if (!usaFirebase || !usuarioActual) return;
     escuchandoVentasGastos = true;
 
-    db.collection("ventas").onSnapshot(function (snap) {
+    suscripcionVentas = db.collection("ventas").onSnapshot(function (snap) {
       ventas = snap.docs.map(function (doc) {
         var d = doc.data();
         return { id: doc.id, fecha: d.fecha, monto: d.monto, medioPago: d.medioPago,
@@ -278,9 +296,11 @@
       });
       pintarVentas();
       pintarBalance();
+    }, function (err) {
+      avisar("Ventas: no se pudo sincronizar (" + (err.message || err.code || "error") + ")");
     });
 
-    db.collection("gastos").onSnapshot(function (snap) {
+    suscripcionGastos = db.collection("gastos").onSnapshot(function (snap) {
       gastos = snap.docs.map(function (doc) {
         var d = doc.data();
         return { id: doc.id, fecha: d.fecha, monto: d.monto, concepto: d.concepto,
@@ -289,7 +309,19 @@
       });
       pintarGastos();
       pintarBalance();
+    }, function (err) {
+      avisar("Gastos: no se pudo sincronizar (" + (err.message || err.code || "error") + ")");
     });
+  }
+
+  /* Cierra las suscripciones en tiempo real al cerrar sesión, para que al
+   * volver a entrar se conecten de nuevo frescas. */
+  function cerrarSuscripciones() {
+    if (suscripcionPresupuesto) { suscripcionPresupuesto(); suscripcionPresupuesto = null; }
+    if (suscripcionVentas) { suscripcionVentas(); suscripcionVentas = null; }
+    if (suscripcionGastos) { suscripcionGastos(); suscripcionGastos = null; }
+    escuchandoPresupuesto = false;
+    escuchandoVentasGastos = false;
   }
 
   /* Calcula el balance en un rango de fechas: ventas suman, gastos restan. */
@@ -721,8 +753,9 @@
   }
 
   function escucharPresupuesto() {
-    if (!usaFirebase || !usuarioActual) return;
-    db.collection("presupuestos").doc("compartido").onSnapshot(function (doc) {
+    if (!usaFirebase || !usuarioActual || escuchandoPresupuesto) return;
+    escuchandoPresupuesto = true;
+    suscripcionPresupuesto = db.collection("presupuestos").doc("compartido").onSnapshot(function (doc) {
       if (!doc.exists) return;
       var d = doc.data() || {};
       ignorandoFirestore = true;
@@ -1736,15 +1769,25 @@
 
   function iniciar() {
     if (usaFirebase) {
+      /* El login es la pantalla principal: arranca siempre en login y el
+       * onAuthStateChanged decide si entra directo al presupuesto (sesión
+       * guardada) o espera el login a mano. */
+      mostrarLogin();
       auth.onAuthStateChanged(function (user) {
         usuarioActual = user;
         var btn = $("#cerrar-sesion");
         if (btn) btn.hidden = !user;
         if (user) {
-          iniciarApp();
+          /* Listeners primero: si algo falla al enlazar la UI, las ventas
+           * quedan sincronizadas igual. Los flags evitan duplicados. */
           escucharPresupuesto();
           escucharVentasYGastos();
+          if (!appIniciada) {
+            appIniciada = true;
+            iniciarApp();
+          }
         } else {
+          cerrarSuscripciones();
           mostrarLogin();
         }
       });

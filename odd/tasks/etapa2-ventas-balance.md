@@ -40,3 +40,4 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 ## Log (append)
 
 - L5 (23/10): Balance real: se reemplazó el placeholder de #view-balance por pantalla completa (rangos, subtotales semana/mes, desglose de gastos por categoría por día, exportar CSV, form de gastos Proveedores/Sueldos/Impuestos/Otro). Botón 'Traer de la planilla' eliminado; queda 'Descargar plantilla'. Commit 687ab25 + este.
+- L6 (23/10): Login como pantalla principal (mostrarLogin al arrancar; con sesion guardada pasa directo a presupuesto). Guardar venta/gasto con .catch -> fallback local + aviso; onSnapshot con callback de error; suscripciones desmontables al cerrar sesion; appIniciada evita doble binding.
