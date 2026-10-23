@@ -881,6 +881,7 @@
   var elBalanceMesSel = $("#balance-mes-sel");
   var elBalanceAnio = $("#balance-anio");
   var elBalanceExportar = $("#balance-exportar");
+  var elBalanceAplicar = $("#balance-aplicar");
   var elGastoNuevo = $("#gasto-nuevo");
 
   var elGastoForm = $("#gasto-form");
@@ -1341,7 +1342,7 @@
 
     var enBlanco = b.mesCompleto;
     elBalanceTabla.innerHTML =
-      '<div class="tabla-scroll"><table class="tabla-balance">' + cabeceraBalance() +
+      '<div class="tabla-scroll"><table class="tabla-balance"><caption>' + escapar(titulo) + "</caption>" + cabeceraBalance() +
       "<tbody>" + b.lineas.map(function (l) { return filaBalanceHTML(l, enBlanco); }).join("") + "</tbody></table></div>";
 
     var t = b.lineas[b.lineas.length - 1];
@@ -1761,6 +1762,11 @@
     });
     elBalanceAnio.addEventListener("input", function () {
       pintarBalance();
+    });
+
+    elBalanceAplicar.addEventListener("click", function () {
+      pintarBalance();
+      avisar("Balance aplicado: " + MESES_ES[Number(elBalanceMesSel.value) - 1] + " " + elBalanceAnio.value);
     });
 
     /* Valores por defecto: mes y año en curso, editables */

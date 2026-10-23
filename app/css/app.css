@@ -1126,6 +1126,16 @@ button, input, select { font: inherit; color: inherit; }
   font-size: 13px;
 }
 
+.tabla-balance caption {
+  background: var(--papel);
+  font-weight: 800;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--linea);
+  caption-side: top;
+  text-align: left;
+}
+
 .tabla-balance th {
   background: var(--papel);
   font-weight: 700;
