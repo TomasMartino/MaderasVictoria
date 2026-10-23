@@ -1227,3 +1227,21 @@ button, input, select { font: inherit; color: inherit; }
 .prod-drop__op:hover, .prod-drop__op--elegido { background: var(--papel-2); }
 .prod-drop__op--elegido { font-weight: 700; }
 .prod-drop__vacio { padding: 10px; font-size: 13px; color: var(--tinta-2); }
+
+/* Comparar productos con el Excel */
+.modal__caja--ancha { max-width: 620px; width: 94vw; max-height: 86vh; display: flex; flex-direction: column; }
+.excel__ayuda { margin: 0 0 10px; font-size: 12.5px; color: var(--tinta-2); line-height: 1.45; }
+.excel__resumen { margin: 0 0 8px; font-size: 13px; color: var(--tinta-2); }
+.excel__resumen strong { color: var(--tinta); }
+.excel__lista { flex: 1; overflow-y: auto; border: 1px solid var(--linea); border-radius: 10px; min-height: 120px; }
+.excel-item { padding: 8px 12px 10px; border-bottom: 1px solid var(--linea); }
+.excel-item:last-child { border-bottom: 0; }
+.excel-item__prod { font-weight: 700; font-size: 13.5px; color: var(--tinta); }
+.excel-cambio { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 0 0; font-size: 13px; }
+.excel-cambio__campo { width: 110px; flex: 0 0 auto; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-2); }
+.excel-cambio__valores { flex: 1 1 auto; color: var(--tinta); white-space: nowrap; }
+.excel-cambio__nota { font-size: 11.5px; color: var(--madera); }
+.excel-cambio__estado { font-size: 12px; font-weight: 600; color: var(--rojo); }
+.excel-cambio__estado--ok { color: #3E7D43; }
+.btn--mini { padding: 3px 10px; font-size: 12px; border-radius: 8px; }
+.modal__error { margin: 8px 0 0; color: var(--rojo); font-size: 12.5px; }

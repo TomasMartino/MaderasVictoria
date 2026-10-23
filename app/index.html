@@ -165,6 +165,8 @@
             <div class="prod-head__acciones">
               <button id="productos-descargar-plantilla" class="btn btn--ghost" type="button">Descargar plantilla</button>
               <button id="productos-restablecer" class="btn btn--ghost" type="button">Restablecer del Excel</button>
+              <button id="productos-comparar" class="btn btn--brand" type="button">Comparar con Excel</button>
+              <input id="productos-excel" type="file" accept=".xlsx,.xls" hidden>
               <button id="productos-agregar" class="btn btn--brand" type="button">+ Agregar producto</button>
             </div>
           </header>
@@ -444,6 +446,22 @@
   </form>
 </div>
 
+<!-- ============ COMPARAR PRODUCTOS CON EL EXCEL ============ -->
+<div id="modal-excel" class="modal" hidden>
+  <div class="modal__caja modal__caja--ancha" role="dialog" aria-modal="true" aria-labelledby="excel-titulo">
+    <h2 class="modal__titulo" id="excel-titulo">Cambios que trae el Excel</h2>
+    <p class="excel__ayuda">Revisá cada cambio: Aceptar lo aplica al catálogo, Denegar lo deja como está. Nada se cambia sin tu decisión.</p>
+    <p class="excel__resumen" id="excel-resumen"></p>
+    <div class="excel__lista" id="excel-cambios"></div>
+    <p class="modal__error" id="excel-error" hidden></p>
+    <div class="modal__pie">
+      <span class="modal__espacio"></span>
+      <button type="button" class="btn btn--ghost" id="excel-cancelar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -451,6 +469,7 @@
 <script src="js/catalogo.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/productos.js"></script>
+<script src="js/planilla.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

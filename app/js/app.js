@@ -9,6 +9,7 @@
   var CAT = window.TV_CATALOGO;
   var TV = window.TV;
   var PRODUCTOS = window.TV_PRODUCTOS;
+  var PLANILLA = window.TV_PLANILLA;
 
   var PASO = CAT.paso;
   var CLAVE = "tiovity.presupuesto.v1";
@@ -897,6 +898,12 @@
 
   var elProdLista = $("#productos-lista");
   var elProdResumen = $("#productos-resumen");
+  var elProdComparar = $("#productos-comparar");
+  var elExcelInput = $("#productos-excel");
+  var elModalExcel = $("#modal-excel");
+  var elExcelCambios = $("#excel-cambios");
+  var elExcelResumen = $("#excel-resumen");
+  var elExcelError = $("#excel-error");
   var elProdReporte = $("#productos-reporte");
   var elProdBuscar = $("#productos-buscar");
   var elProdUnidad = $("#productos-unidad");
@@ -1072,6 +1079,142 @@
     elProdLista.innerHTML = visibles.length
       ? visibles.map(filaProductoHTML).join("")
       : '<p class="prod-vacio">No hay productos que coincidan.</p>';
+  }
+
+  /* ---------- comparar con el excel ---------- */
+
+  /* La planilla es la fuente original (catalogo.js se genero de la hoja
+   * PRECIOS). Suben el .xlsx actualizado, la app compara contra el
+   * catalogo y propone cada cambio para aceptar o denegar uno por uno.
+   * Solo se aplica lo aceptado; denegar conserva el producto como viene. */
+
+  function pintarRevision() {
+    var hechas = revisionExcel.filter(function (c) { return c.estado; }).length;
+    elExcelResumen.innerHTML = revisionExcel.length
+      ? "<strong>" + hechas + " de " + revisionExcel.length + "</strong> cambios revisados"
+      : "";
+
+    var porProducto = {};
+    revisionExcel.forEach(function (c, i) {
+      (porProducto[c.nombre] || (porProducto[c.nombre] = [])).push(i);
+    });
+
+    var html = "";
+    Object.keys(porProducto).forEach(function (nombre) {
+      html += '<div class="excel-item"><div class="excel-item__prod">' + escapar(nombre) + "</div>";
+      porProducto[nombre].forEach(function (i) {
+        var c = revisionExcel[i];
+        html += '<div class="excel-cambio" data-idx="' + i + '">' +
+          '<span class="excel-cambio__campo">' + escapar(c.campo) + "</span>" +
+          '<span class="excel-cambio__valores">' + escapar(c.de) + " → " + escapar(c.a) + "</span>";
+        if (c.propio && c.campo === "precio") {
+          html += '<span class="excel-cambio__nota">tenía precio propio en la app</span>';
+        }
+        if (c.estado) {
+          html += '<span class="excel-cambio__estado' + (c.estado === "ok" ? " excel-cambio__estado--ok" : "") + '">' +
+            (c.estado === "ok" ? "aceptado ✓" : "denegado ✕") + "</span>";
+        } else {
+          html += '<button type="button" class="btn btn--mini" data-decision="ok">Aceptar</button>' +
+            '<button type="button" class="btn btn--mini" data-decision="no">Denegar</button>';
+        }
+        html += "</div>";
+      });
+      html += "</div>";
+    });
+    elExcelCambios.innerHTML = html;
+  }
+
+  function aplicarCambio(c) {
+    if (c.tipo === "nuevo") {
+      catalogo.push({
+        nombre: c.producto.nombre,
+        unidad: c.producto.unidad,
+        precio: c.producto.precio,
+        pideLargo: c.producto.pideLargo,
+        stock: c.producto.stock,
+        activo: true,
+        propio: false,
+        origen: "planilla",
+      });
+    } else if (c.tipo === "fuera") {
+      catalogo = PRODUCTOS.baja(catalogo, c.actual.nombre);
+    } else {
+      var actual = PRODUCTOS.buscar(catalogo, c.nombre);
+      if (!actual) return;
+      if (c.campo === "precio") {
+        actual.precio = c.valores.a;
+        actual.propio = false;
+      } else if (c.campo === "unidad") {
+        actual.unidad = c.valores.a;
+      } else if (c.campo === "pideLargo") {
+        actual.pideLargo = c.valores.a;
+      } else if (c.campo === "stock") {
+        actual.stock = c.valores.a;
+      }
+    }
+    guardarCatalogo();
+    crearMotor();
+    refrescarSelects();
+    pintarProductos();
+  }
+
+  function decidir(i, decision) {
+    var c = revisionExcel[i];
+    if (!c || c.estado) return;
+    if (decision === "ok") {
+      aplicarCambio(c);
+    }
+    c.estado = decision === "ok" ? "ok" : "no";
+    pintarRevision();
+
+    var pendientes = revisionExcel.some(function (x) { return !x.estado; });
+    if (!pendientes) {
+      var aplicados = revisionExcel.filter(function (x) { return x.estado === "ok"; }).length;
+      var denegados = revisionExcel.length - aplicados;
+      elModalExcel.hidden = true;
+      revisionExcel = [];
+      avisar("Revisión lista: " + aplicados + " aplicados, " + denegados + " denegados");
+    }
+  }
+
+  function cerrarExcel() {
+    var pendientes = revisionExcel.filter(function (c) { return !c.estado; }).length;
+    if (pendientes && !confirm("Quedan " + pendientes + " cambios sin revisar: se conservan sin aplicar. ¿Cerrar igual?")) {
+      return;
+    }
+    revisionExcel = [];
+    elModalExcel.hidden = true;
+  }
+
+  function abrirExcel(archivo) {
+    if (!archivo) return;
+    if (typeof XLSX === "undefined") {
+      avisar("No se pudo cargar el lector de Excel. Revisá la conexión a internet y recargá.");
+      return;
+    }
+    var lector = new FileReader();
+    lector.onload = function () {
+      try {
+        var hojas = XLSX.read(lector.result, { type: "array" });
+        var nombreHoja = hojas.SheetNames.indexOf("PRECIOS") !== -1 ? "PRECIOS" : hojas.SheetNames[0];
+        var filas = XLSX.utils.sheet_to_json(hojas.Sheets[nombreHoja], { header: 1, defval: null });
+        var r = PLANILLA.revisar(filas, catalogo, numeroCorto);
+        revisionExcel = r.cambios;
+        elModalExcel.hidden = false;
+        elExcelError.hidden = true;
+        pintarRevision();
+        if (revisionExcel.length === 0) {
+          elExcelError.hidden = false;
+          elExcelError.textContent = "El Excel coincide con el catálogo: no hay cambios para revisar.";
+        } else if (r.ignoradas.length) {
+          elExcelError.hidden = false;
+          elExcelError.textContent = "Filas ignoradas (falta unidad válida): " + r.ignoradas.join(", ");
+        }
+      } catch (e) {
+        avisar("El archivo no se pudo leer como Excel");
+      }
+    };
+    lector.readAsArrayBuffer(archivo);
   }
 
   /* ---------- ventas ---------- */
@@ -1740,6 +1883,24 @@
       pintarProductos();
       avisar("Catálogo restablecido al Excel");
     });
+
+    elProdComparar.addEventListener("click", function () {
+      elExcelInput.value = "";
+      elExcelInput.click();
+    });
+
+    elExcelInput.addEventListener("change", function () {
+      abrirExcel(this.files && this.files[0]);
+    });
+
+    elExcelCambios.addEventListener("click", function (ev) {
+      var caja = ev.target.closest(".excel-cambio");
+      var d = ev.target.closest("[data-decision]");
+      if (!caja || !d) return;
+      decidir(Number(caja.dataset.idx), d.dataset.decision);
+    });
+
+    $("#excel-cancelar").addEventListener("click", cerrarExcel);
 
     elPUnidad.addEventListener("click", function (ev) {
       var b = ev.target.closest(".tipo");
