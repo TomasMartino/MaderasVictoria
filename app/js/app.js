@@ -404,42 +404,51 @@
     return p.nombre + " · " + precio + stock;
   }
 
-  /* El producto elegido tiene que seguir apareciendo aunque esté dado de baja:
-   * si no, un presupuesto guardado perdería la línea en silencio. */
-  function opcionesHTML(valorActual) {
-    var html = '<option value="">Elegí un producto…</option>';
-    var enLista = {};
-
-    PRODUCTOS.paraElegir(catalogo).forEach(function (g) {
-      html += '<optgroup label="' + escapar(g.unidad) + '">';
-      g.productos.forEach(function (p) {
-        enLista[PRODUCTOS.clave(p.nombre)] = true;
-        html += '<option value="' + escapar(p.nombre) + '">' + escapar(etiquetaProducto(p)) + "</option>";
-      });
-      html += "</optgroup>";
+  /* Orden para grupos y listas: con precio arriba, después los sin precio;
+   * dentro de cada tramo, alfabético. No toca el motor, solo la UI. */
+  function conPrecioPrimero(gs) {
+    return gs.slice().sort(function (a, b) {
+      var pa = typeof a.precio === "number" ? 0 : 1;
+      var pb = typeof b.precio === "number" ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0;
     });
-
-    if (valorActual && !enLista[PRODUCTOS.clave(valorActual)]) {
-      var p = PRODUCTOS.buscar(catalogo, valorActual);
-      if (p) {
-        html += '<optgroup label="Fuera de lista">';
-        html += '<option value="' + escapar(p.nombre) + '">' + escapar(etiquetaProducto(p) + " (dado de baja)") + "</option>";
-        html += "</optgroup>";
-      }
-    }
-    return html;
   }
 
   function refrescarSelects() {
     var filas = elLineas.children;
     for (var i = 0; i < filas.length; i++) {
       var linea = buscar(Number(filas[i].dataset.id));
-      var sel = $("select.prod", filas[i]);
-      if (!sel || !linea) continue;
-      var valor = linea.producto || "";
-      sel.innerHTML = opcionesHTML(valor);
-      sel.value = valor;
+      var input = $(".prod-buscar", filas[i]);
+      if (!input || !linea) continue;
+      var p = linea.producto ? PRODUCTOS.buscar(catalogo, linea.producto) : null;
+      input.value = p ? etiquetaProducto(p) : "";
     }
+  }
+
+  /* Lista filtrada para el buscador del dropdown de producto, agrupada por
+   * unidad y con los que tienen precio siempre arriba. El producto elegido
+   * (aunque esté dado de baja) sale marcado para que se vea el elegido. */
+  function listaProductosHTML(texto, valorActual) {
+    var t = PRODUCTOS.sinAcentos(String(texto || "").trim().toLowerCase());
+    var html = "";
+    PRODUCTOS.paraElegir(catalogo).forEach(function (g) {
+      var ps = conPrecioPrimero(g.productos).filter(function (p) {
+        if (!t) return true;
+        return PRODUCTOS.sinAcentos(p.nombre.toLowerCase()).indexOf(t) !== -1;
+      });
+      if (!ps.length) return;
+      html += '<div class="prod-drop__grupo">' + escapar(g.unidad) + "</div>";
+      ps.forEach(function (p) {
+        var elegido = valorActual && PRODUCTOS.clave(valorActual) === PRODUCTOS.clave(p.nombre);
+        html += '<div class="prod-drop__op' + (elegido ? " prod-drop__op--elegido" : "") + '" data-nombre="' + escapar(p.nombre) + '">' + escapar(etiquetaProducto(p)) + "</div>";
+      });
+    });
+    if (valorActual) {
+      html = '<div class="prod-drop__op" data-nombre="">— Sin producto —</div>' + html;
+    }
+    if (!html) html = '<div class="prod-drop__vacio">Sin resultados</div>';
+    return html;
   }
 
   function escapar(s) {
@@ -522,7 +531,10 @@
     row.innerHTML =
       '<span class="linea__n"></span>' +
       '<label class="f f--prod"><span>Producto</span>' +
-        '<select class="prod">' + opcionesHTML(linea.producto) + "</select>" +
+        '<span class="prod-drop">' +
+          '<input class="prod-buscar" type="text" autocomplete="off" placeholder="Buscar producto…">' +
+          '<div class="prod-drop__lista" hidden></div>' +
+        "</span>" +
         '<span class="prod-nombre"></span></label>' +
       '<label class="f f--cant"><span>Cantidad</span>' +
         '<input class="cant" type="text" inputmode="decimal" autocomplete="off" placeholder="0"></label>' +
@@ -534,22 +546,65 @@
       '<span class="f f--total"><span>Total</span><output class="salida total" data-base="salida total">—</output></span>' +
       '<button class="linea__del" type="button" title="Quitar" aria-label="Quitar producto">×</button>';
 
-    var sel = $(".prod", row);
+    var buscando = $(".prod-buscar", row);
+    var lista = $(".prod-drop__lista", row);
     var cant = $(".cant", row);
     var largo = $(".largo", row);
 
-    sel.value = linea.producto || "";
-    cant.value = linea.cantidad;
-    largo.value = linea.largo;
+    function etiquetaDe(nombre) {
+      var p = nombre ? PRODUCTOS.buscar(catalogo, nombre) : null;
+      return p ? etiquetaProducto(p) : "";
+    }
 
-    sel.addEventListener("change", function () {
-      var l = buscar(linea.id);
-      l.producto = sel.value || null;
-      var p = l.producto ? PRODUCTOS.buscar(catalogo, l.producto) : null;
+    function ponerValor(nombre) {
+      buscar(linea.id).producto = nombre || null;
+      buscando.value = etiquetaDe(nombre);
+    }
+
+    function abrirLista() {
+      lista.innerHTML = listaProductosHTML(buscando.value, buscar(linea.id).producto);
+      lista.hidden = false;
+    }
+
+    function elegir(nombre) {
+      ponerValor(nombre);
+      lista.hidden = true;
+      var p = nombre ? PRODUCTOS.buscar(catalogo, nombre) : null;
       if (p && p.pideLargo) {
         largo.focus();
       }
       tocar();
+    }
+
+    buscando.value = etiquetaDe(linea.producto);
+    cant.value = linea.cantidad;
+    largo.value = linea.largo;
+
+    buscando.addEventListener("focus", abrirLista);
+    buscando.addEventListener("input", function () {
+      abrirLista();
+    });
+    buscando.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        lista.hidden = true;
+        buscando.value = etiquetaDe(buscar(linea.id).producto);
+      } else if (ev.key === "Enter") {
+        ev.preventDefault();
+        var op = lista.querySelector(".prod-drop__op");
+        if (op) elegir(op.dataset.nombre || null);
+      }
+    });
+    buscando.addEventListener("blur", function () {
+      setTimeout(function () {
+        lista.hidden = true;
+        buscando.value = etiquetaDe(buscar(linea.id).producto);
+      }, 120);
+    });
+    lista.addEventListener("mousedown", function (ev) {
+      var op = ev.target.closest(".prod-drop__op");
+      if (!op) return;
+      ev.preventDefault();
+      elegir(op.dataset.nombre || null);
     });
 
     cant.addEventListener("input", function () {
@@ -599,7 +654,7 @@
     var row = crearFila(linea);
     elLineas.appendChild(row);
     renumerar();
-    $(".prod", row).focus();
+    $(".prod-buscar", row).focus();
     row.scrollIntoView({ block: "nearest", behavior: "smooth" });
     tocar();
   }
@@ -1662,6 +1717,22 @@
 
     $("#productos-descargar-plantilla").addEventListener("click", function () {
       descargarPlantilla();
+    });
+
+    $("#productos-restablecer").addEventListener("click", function () {
+      var primera = window.confirm("Esto borra TODOS los productos agregados o editados en este equipo y vuelve al catálogo del Excel. ¿Seguro?");
+      if (!primera) return;
+      var segunda = window.confirm("Confirmación final: el catálogo queda igual a la planilla. ¿Restablecer?");
+      if (!segunda) return;
+      catalogo = [];
+      CAT.productos.forEach(function (p) {
+        catalogo.push(JSON.parse(JSON.stringify(p)));
+      });
+      guardarCatalogo();
+      crearMotor();
+      refrescarSelects();
+      pintarProductos();
+      avisar("Catálogo restablecido al Excel");
     });
 
     elPUnidad.addEventListener("click", function (ev) {
