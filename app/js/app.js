@@ -883,6 +883,7 @@
   var elBalanceCalcular = $("#balance-calcular");
   var elBalanceExportar = $("#balance-exportar");
   var elBalanceMes = $("#balance-mes");
+  var elGastoNuevo = $("#gasto-nuevo");
 
   var elGastoForm = $("#gasto-form");
   var elFormGasto = $("#form-gasto");
