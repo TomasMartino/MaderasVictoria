@@ -1111,6 +1111,54 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--papel-2, #EFEAE2);
 }
 
+/* ---- tabla del balance (formato de la hoja BALANCE del excel) ---- */
+
+.tabla-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--blanco);
+}
+
+.tabla-balance {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabla-balance th {
+  background: var(--papel);
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--linea);
+}
+
+.tabla-balance td {
+  padding: 6px 10px;
+  border-top: 1px solid var(--linea);
+  white-space: nowrap;
+}
+
+.tabla-balance .num,
+.tabla-balance th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla-balance tr.fila-balance-subtotal td {
+  background: var(--papel);
+  font-weight: 700;
+  border-top: 2px solid var(--linea);
+}
+
+.tabla-balance tr.fila-balance-total td {
+  background: var(--papel-2, #EFEAE2);
+  font-weight: 800;
+  border-top: 2px solid var(--linea);
+}
+
 @media screen and (max-width: 900px) {
   .prod-filtros label.buscador > span.campo__label { display: none; }
   .prod-filtros .buscador input { font-size: 14px; padding: 10px; }

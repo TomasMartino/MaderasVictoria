@@ -1092,101 +1092,230 @@
     return DIAS_ES[d.getDay()] + " " + Number(p[2]) + "/" + Number(p[1]);
   }
 
-  /* Arma las líneas del balance para el rango: un renglón por día con su
-   * desglose de gastos por tipo, y subtótulos cuando termina la semana o
-   * cambia el mes. Se usa para pintar y para exportar, así salen iguales. */
-  function construirLineasBalance(desde, hasta) {
-    var b = calcularBalance(desde, hasta);
+  /* Recolecta ventas y gastos no anulados del rango, separando los gastos
+   * en las columnas que usa su Excel: Gastos (otros), Impuestos, Sueldos y
+   * Proveedores. */
+  function recolectarMovimientos(desde, hasta) {
+    var fechas = new Set();
+    var ventasPorFecha = {};
+    var gastosPorFecha = {};
+    var tot = { ventas: 0, gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
 
-    var porCategoria = {};
+    ventas.forEach(function (v) {
+      if (v.anulada) return;
+      if (v.fecha < desde || v.fecha > hasta) return;
+      ventasPorFecha[v.fecha] = (ventasPorFecha[v.fecha] || 0) + v.monto;
+      tot.ventas += v.monto;
+      fechas.add(v.fecha);
+    });
     gastos.forEach(function (g) {
       if (g.anulada) return;
       if (g.fecha < desde || g.fecha > hasta) return;
-      if (!porCategoria[g.fecha]) porCategoria[g.fecha] = {};
-      var cat = g.categoria || "Otro";
-      porCategoria[g.fecha][cat] = (porCategoria[g.fecha][cat] || 0) + g.monto;
+      if (!gastosPorFecha[g.fecha]) {
+        gastosPorFecha[g.fecha] = { gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
+      }
+      var clave = g.categoria === "Impuestos" ? "impuestos"
+        : g.categoria === "Sueldos" ? "sueldos"
+        : g.categoria === "Proveedores" ? "proveedores"
+        : "gastos";
+      gastosPorFecha[g.fecha][clave] += g.monto;
+      tot[clave] += g.monto;
+      fechas.add(g.fecha);
     });
 
-    var fechas = new Set();
-    Object.keys(b.ventasPorFecha).forEach(function (f) { fechas.add(f); });
-    Object.keys(b.gastosPorFecha).forEach(function (f) { fechas.add(f); });
-    var orden = Array.from(fechas).sort();
+    tot.egresos = tot.gastos + tot.impuestos + tot.sueldos + tot.proveedores;
 
-    var lineas = [];
-    var accSem = { ventas: 0, gastos: 0 };
-    var accMes = { ventas: 0, gastos: 0 };
-    var semActual = null, mesActual = null, anterior = null;
-
-    function empujarSubtotal(tipo, etiqueta, acc) {
-      lineas.push({
-        tipo: tipo, etiqueta: etiqueta,
-        ventas: acc.ventas, gastos: acc.gastos, saldo: acc.ventas - acc.gastos,
-      });
-      acc.ventas = 0; acc.gastos = 0;
-    }
-
-    orden.forEach(function (f) {
-      var lunes = lunesISO(f);
-      var mes = f.slice(0, 7);
-      if (semActual !== null && lunes !== semActual) {
-        empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(anterior), accSem);
-      }
-      if (mesActual !== null && mes !== mesActual) {
-        if (semActual !== null) {
-          empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(anterior), accSem);
-        }
-        var p = anterior.split("-");
-        empujarSubtotal("mes", MESES_ES[Number(p[1]) - 1] + " " + p[0], accMes);
-      }
-      semActual = lunes; mesActual = mes;
-
-      var v = b.ventasPorFecha[f] || 0;
-      var g = b.gastosPorFecha[f] || 0;
-      accSem.ventas += v; accSem.gastos += g;
-      accMes.ventas += v; accMes.gastos += g;
-
-      var desglose = "";
-      var cats = porCategoria[f];
-      if (cats) {
-        desglose = Object.keys(cats).sort().map(function (c) {
-          return c + " " + TV.pesos(cats[c]);
-        }).join(" · ");
-      }
-      lineas.push({
-        tipo: "dia", etiqueta: diaBonito(f), desglose: desglose,
-        ventas: v, gastos: g, saldo: v - g,
-      });
-      anterior = f;
-    });
-
-    var fin = orden.length ? orden[orden.length - 1] : hasta;
-    if (semActual !== null) empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(fin), accSem);
-    if (mesActual !== null) {
-      var pf = fin.split("-");
-      empujarSubtotal("mes", MESES_ES[Number(pf[1]) - 1] + " " + pf[0], accMes);
-    }
-    lineas.push({
-      tipo: "total", etiqueta: "Total del período",
-      ventas: b.totalVentas, gastos: b.totalGastos, saldo: b.balance,
-    });
-
-    return { lineas: lineas, totalVentas: b.totalVentas, totalGastos: b.totalGastos, balance: b.balance };
+    return {
+      fechas: Array.from(fechas).sort(),
+      ventasPorFecha: ventasPorFecha,
+      gastosPorFecha: gastosPorFecha,
+      tot: tot,
+    };
   }
 
-  function filaBalanceHTML(l) {
+  /* Arma una fila de datos de un día con las columnas del Excel. */
+  function filaDiaBalance(f, mov) {
+    var v = (mov.ventasPorFecha[f] || 0);
+    var c = mov.gastosPorFecha[f] || { gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
+    var egresos = c.gastos + c.impuestos + c.sueldos + c.proveedores;
+    var p = f.split("-");
+    return {
+      tipo: "dia",
+      fecha: f,
+      etiqueta: DIAS_ES[new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()],
+      ventas: v,
+      gastos: c.gastos,
+      impuestos: c.impuestos,
+      sueldos: c.sueldos,
+      proveedores: c.proveedores,
+      ingresos: v,
+      egresos: egresos,
+      neto: v - egresos,
+    };
+  }
+
+  function sumarFilaEn(acc, fila) {
+    acc.ventas += fila.ventas;
+    acc.gastos += fila.gastos;
+    acc.impuestos += fila.impuestos;
+    acc.sueldos += fila.sueldos;
+    acc.proveedores += fila.proveedores;
+    acc.ingresos += fila.ingresos;
+    acc.egresos += fila.egresos;
+    acc.neto += fila.neto;
+  }
+
+  function filaSubtotal(tipo, etiqueta, acc) {
+    return {
+      tipo: tipo,
+      etiqueta: etiqueta,
+      ventas: acc.ventas,
+      gastos: acc.gastos,
+      impuestos: acc.impuestos,
+      sueldos: acc.sueldos,
+      proveedores: acc.proveedores,
+      ingresos: acc.ingresos,
+      egresos: acc.egresos,
+      neto: acc.neto,
+    };
+  }
+
+  function registrosVacios() {
+    return { ventas: 0, gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0, ingresos: 0, egresos: 0, neto: 0 };
+  }
+
+  function esRangoMesCompleto(desde, hasta) {
+    var p = desde.split("-");
+    var y = Number(p[0]);
+    var m = Number(p[1]);
+    var primero = y + "-" + pad2(m) + "-01";
+    var ultimoDia = new Date(y, m, 0).getDate();
+    return desde === primero && hasta === y + "-" + pad2(m) + "-" + pad2(ultimoDia);
+  }
+
+  function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+
+  /* Arma las líneas del balance del rango. Si el rango es un mes completo,
+   * sigue el formato exacto de su Excel BALANCE: fila fija por cada día de
+   * lunes a sábado (vacía si no hay datos), Total Semanal tras cada bloque
+   * y Total Mensual al final. Si no, filas de los días con movimiento, con
+   * subtotales de semana y el total del período. Los domingos no existían
+   * en su planilla (no venden), así que solo se muestran si tuvieron venta
+   * o gasto, para no perder ese dinero del total. */
+  function construirBalance(desde, hasta) {
+    var mov = recolectarMovimientos(desde, hasta);
+    var mesCompleto = esRangoMesCompleto(desde, hasta);
+    var lineas = [];
+    var accTotal = registrosVacios();
+
+    if (mesCompleto) {
+      var p = desde.split("-");
+      var y = Number(p[0]);
+      var m = Number(p[1]);
+      var fin = new Date(y, m - 1, Number(hasta.split("-")[2]));
+      /* Arranca el lunes de la semana que contiene el día 1, como el Excel */
+      var actual = new Date(y, m - 1, 1);
+      actual.setDate(actual.getDate() + (actual.getDay() === 0 ? -6 : 1 - actual.getDay()));
+      var acc = registrosVacios();
+      var abiertaSemana = false;
+
+      while (actual <= fin) {
+        var dow = actual.getDay();
+        var f = actual.getFullYear() + "-" + pad2(actual.getMonth() + 1) + "-" + pad2(actual.getDate());
+        var movDia = mov.ventasPorFecha[f] !== undefined || mov.gastosPorFecha[f] !== undefined;
+        if (dow !== 0 || movDia) {
+          var fila = filaDiaBalance(f, mov);
+          lineas.push(fila);
+          sumarFilaEn(acc, fila);
+          sumarFilaEn(accTotal, fila);
+          abiertaSemana = true;
+        }
+        /* El bloque cierra al llegar al sábado o al terminar el mes */
+        if (abiertaSemana && (actual.getDay() === 6 || f === hasta)) {
+          lineas.push(filaSubtotal("semana", "Total Semanal", acc));
+          acc = registrosVacios();
+          abiertaSemana = false;
+        }
+        actual.setDate(actual.getDate() + 1);
+      }
+      lineas.push(filaSubtotal("mes", "Total Mensual", accTotal));
+    } else {
+      var acc = registrosVacios();
+      var anterior = null;
+      mov.fechas.forEach(function (f) {
+        var fila = filaDiaBalance(f, mov);
+        if (anterior !== null && lunesISO(f) !== lunesISO(anterior)) {
+          lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
+          acc = registrosVacios();
+        }
+        lineas.push(fila);
+        sumarFilaEn(acc, fila);
+        sumarFilaEn(accTotal, fila);
+        anterior = f;
+      });
+      if (anterior !== null) {
+        lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
+      }
+      if (lineas.length) {
+        lineas.push(filaSubtotal("total", "Total del período", accTotal));
+      }
+    }
+
+    return { lineas: lineas, mesCompleto: mesCompleto };
+  }
+
+  function rangoMesActual() {
+    var hoy = new Date();
+    var y = hoy.getFullYear();
+    var m = hoy.getMonth() + 1;
+    var ultimoDia = new Date(y, m, 0).getDate();
+    return {
+      desde: y + "-" + pad2(m) + "-01",
+      hasta: y + "-" + pad2(m) + "-" + pad2(ultimoDia),
+    };
+  }
+
+  /* Tabla con las mismas columnas de la hoja BALANCE del Excel:
+   * Día | Ventas | Gastos | Impuestos | Sueldos | Proveedores |
+   * Total Ingresos | Total Egresos | Resultado Neto. */
+  function cabeceraBalance() {
+    return '<thead><tr>' +
+      '<th>Fecha</th><th>D&iacute;a</th>' +
+      '<th class="num">Ventas</th>' +
+      '<th class="num">Gastos</th>' +
+      '<th class="num">Impuestos</th>' +
+      '<th class="num">Sueldos</th>' +
+      '<th class="num">Proveedores</th>' +
+      '<th class="num">Total Ingresos</th>' +
+      '<th class="num">Total Egresos</th>' +
+      '<th class="num">Resultado Neto</th>' +
+      '</tr></thead>';
+  }
+
+  function celdaMonto(fila, campo, enBlanco) {
+    if (enBlanco && !fila[campo]) return '<td class="num"></td>';
+    return '<td class="num">' + numeroCorto(fila[campo]) + "</td>";
+  }
+
+  function filaBalanceHTML(l, mesCompleto) {
     var clase = l.tipo === "dia"
-      ? "prod-fila"
-      : "prod-fila fila-balance-subtotal" + (l.tipo === "total" ? " fila-balance-total" : "");
-    var nombreCol = '<div class="prod__nombre-col">' +
-      '<div class="prod__nombre">' + escapar(l.etiqueta) + "</div>" +
-      (l.desglose ? '<span class="prod__unidad">' + escapar(l.desglose) + "</span>" : "") +
-    '</div>';
-    return '<div class="' + clase + '">' +
-      nombreCol +
-      '<span class="prod__precio">' + TV.pesos(l.ventas) + '</span>' +
-      '<span class="prod__formula">' + TV.pesos(l.gastos) + '</span>' +
-      '<span class="prod__stock prod__stock--vacio">' + TV.pesos(l.saldo) + '</span>' +
-      '</div>';
+      ? ""
+      : (l.tipo === "total" || l.tipo === "mes" ? " fila-balance-total" : " fila-balance-subtotal");
+    var enBlanco = mesCompleto && l.tipo === "dia";
+    var p = l.fecha ? l.fecha.split("-") : null;
+    var fechaCol = p ? Number(p[2]) + "/" + Number(p[1]) : "";
+    return '<tr' + (clase ? ' class="' + clase + '"' : "") + ">" +
+      "<td>" + fechaCol + "</td>" +
+      "<td>" + escapar(l.etiqueta) + "</td>" +
+      celdaMonto(l, "ventas", enBlanco) +
+      celdaMonto(l, "gastos", enBlanco) +
+      celdaMonto(l, "impuestos", enBlanco) +
+      celdaMonto(l, "sueldos", enBlanco) +
+      celdaMonto(l, "proveedores", enBlanco) +
+      celdaMonto(l, "ingresos", enBlanco) +
+      celdaMonto(l, "egresos", enBlanco) +
+      celdaMonto(l, "neto", enBlanco) +
+      "</tr>";
   }
 
   function pintarBalance() {
@@ -1195,36 +1324,66 @@
     var desde = elBalanceDesde ? elBalanceDesde.value : "";
     var hasta = elBalanceHasta ? elBalanceHasta.value : "";
 
+    /* Sin fechas elegidas arranca mostrando el mes corriente, así el
+     * balance queda a la vista y se actualiza en tiempo real con las
+     * ventas y gastos que carguen todos. */
     if (!desde || !hasta) {
-      elBalanceTabla.innerHTML = '<p style="color:var(--tinta-2);">Elegí desde y hasta, o tocá "Este mes".</p>';
-      elBalanceResumen.textContent = "";
+      var r = rangoMesActual();
+      desde = r.desde;
+      hasta = r.hasta;
+      if (elBalanceDesde) elBalanceDesde.value = desde;
+      if (elBalanceHasta) elBalanceHasta.value = hasta;
+    }
+
+    var b = construirBalance(desde, hasta);
+
+    var titulo = b.mesCompleto
+      ? MESES_ES[Number(desde.split("-")[1]) - 1] + " " + desde.split("-")[0]
+      : "Del " + diaBonito(desde) + " al " + diaBonito(hasta);
+
+    if (!b.lineas.length) {
+      elBalanceTabla.innerHTML = '<p class="prod-vacio">Sin movimientos en este rango.</p>';
+      elBalanceResumen.textContent = titulo;
       if (elBalanceExportar) elBalanceExportar.hidden = true;
       return;
     }
 
-    var b = construirLineasBalance(desde, hasta);
-
+    var enBlanco = b.mesCompleto;
     elBalanceTabla.innerHTML =
-      '<div class="prod-fila prod-fila--head" aria-hidden="true">' +
-      '<span>Fecha</span><span class="c-der">Ventas</span><span>Gastos</span><span class="c-der">Saldo</span></div>' +
-      b.lineas.map(filaBalanceHTML).join("");
+      '<div class="tabla-scroll"><table class="tabla-balance">' + cabeceraBalance() +
+      "<tbody>" + b.lineas.map(function (l) { return filaBalanceHTML(l, enBlanco); }).join("") + "</tbody></table></div>";
 
+    var t = b.lineas[b.lineas.length - 1];
     elBalanceResumen.innerHTML =
-      '<span>Ventas: ' + TV.pesos(b.totalVentas) + '</span>' +
-      '<i aria-hidden="true">·</i><span>Gastos: ' + TV.pesos(b.totalGastos) + '</span>' +
-      '<i aria-hidden="true">·</i><span>Balance: ' + TV.pesos(b.balance) + '</span>';
+      "<span>" + escapar(titulo) + "</span>" +
+      '<i aria-hidden="true">·</i><span>Ingresos: ' + numeroCorto(t.ingresos) + "</span>" +
+      '<i aria-hidden="true">·</i><span>Egresos: ' + numeroCorto(t.egresos) + "</span>" +
+      '<i aria-hidden="true">·</i><span>Resultado: ' + numeroCorto(t.neto) + "</span>";
     if (elBalanceExportar) elBalanceExportar.hidden = false;
   }
 
-  /* Exporta el balance al CSV que abre Excel tal cual: día, subtótulos de
-   * semana y mes, total y desglose de gastos por tipo en la columna Fecha. */
+  /* Exporta el balance tal cual se ve, a un CSV que abre Excel. */
   function exportarBalance(desde, hasta) {
-    var b = construirLineasBalance(desde, hasta);
-    var filas = ["Fecha,Ventas,Gastos,Saldo"];
+    var b = construirBalance(desde, hasta);
+    var filas = ["Fecha,Dia,Ventas,Gastos,Impuestos,Sueldos,Proveedores,Total Ingresos,Total Egresos,Resultado Neto"];
     b.lineas.forEach(function (l) {
-      var etiqueta = l.etiqueta;
-      if (l.desglose) etiqueta += " (" + l.desglose + ")";
-      filas.push(etiqueta + "," + l.ventas + "," + l.gastos + "," + l.saldo);
+      var enBlanco = b.mesCompleto && l.tipo === "dia";
+      function num(campo) {
+        var v = l[campo];
+        return (enBlanco && !v) ? "" : String(v);
+      }
+      filas.push([
+        l.fecha || "",
+        l.etiqueta || "",
+        num("ventas"),
+        num("gastos"),
+        num("impuestos"),
+        num("sueldos"),
+        num("proveedores"),
+        num("ingresos"),
+        num("egresos"),
+        num("neto"),
+      ].join(","));
     });
     var csv = filas.join("\r\n");
     var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1620,14 +1779,9 @@
     });
 
     elBalanceMes.addEventListener("click", function () {
-      var hoy = new Date();
-      var y = hoy.getFullYear();
-      var m = hoy.getMonth() + 1;
-      var primero = y + "-" + (m < 10 ? "0" : "") + m + "-01";
-      var ultimoDia = new Date(y, m, 0).getDate();
-      var ultimo = y + "-" + (m < 10 ? "0" : "") + m + "-" + (ultimoDia < 10 ? "0" : "") + ultimoDia;
-      elBalanceDesde.value = primero;
-      elBalanceHasta.value = ultimo;
+      var r = rangoMesActual();
+      elBalanceDesde.value = r.desde;
+      elBalanceHasta.value = r.hasta;
       pintarBalance();
     });
 
@@ -1744,6 +1898,8 @@
           o.classList.toggle("is-active", o === b);
         });
         mostrarVista(b.dataset.view);
+        /* El balance se repinta al entrar, para que siempre esté al día */
+        if (b.dataset.view === "balance") pintarBalance();
       });
     });
 
