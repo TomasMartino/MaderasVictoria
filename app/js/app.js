@@ -878,11 +878,9 @@
 
   var elBalanceResumen = $("#balance-resumen");
   var elBalanceTabla = $("#balance-tabla");
-  var elBalanceDesde = $("#balance-desde");
-  var elBalanceHasta = $("#balance-hasta");
-  var elBalanceCalcular = $("#balance-calcular");
+  var elBalanceMesSel = $("#balance-mes-sel");
+  var elBalanceAnio = $("#balance-anio");
   var elBalanceExportar = $("#balance-exportar");
-  var elBalanceMes = $("#balance-mes");
   var elGastoNuevo = $("#gasto-nuevo");
 
   var elGastoForm = $("#gasto-form");
@@ -1264,14 +1262,19 @@
     return { lineas: lineas, mesCompleto: mesCompleto };
   }
 
-  function rangoMesActual() {
+  /* Rango del mes elegido en el select de mes y el campo de año.
+   * Año inválido o incompleto: usa el año en curso. */
+  function rangoDeSeleccion() {
     var hoy = new Date();
-    var y = hoy.getFullYear();
-    var m = hoy.getMonth() + 1;
-    var ultimoDia = new Date(y, m, 0).getDate();
+    var mes = elBalanceMesSel && elBalanceMesSel.value >= 1 && elBalanceMesSel.value <= 12
+      ? Number(elBalanceMesSel.value)
+      : hoy.getMonth() + 1;
+    var anioCrudo = elBalanceAnio ? Number(elBalanceAnio.value) : 0;
+    var anio = (anioCrudo >= 1000 && anioCrudo <= 9999) ? anioCrudo : hoy.getFullYear();
+    var ultimoDia = new Date(anio, mes, 0).getDate();
     return {
-      desde: y + "-" + pad2(m) + "-01",
-      hasta: y + "-" + pad2(m) + "-" + pad2(ultimoDia),
+      desde: anio + "-" + pad2(mes) + "-01",
+      hasta: anio + "-" + pad2(mes) + "-" + pad2(ultimoDia),
     };
   }
 
@@ -1321,28 +1324,16 @@
   function pintarBalance() {
     if (!elBalanceTabla) return;
 
-    var desde = elBalanceDesde ? elBalanceDesde.value : "";
-    var hasta = elBalanceHasta ? elBalanceHasta.value : "";
-
-    /* Sin fechas elegidas arranca mostrando el mes corriente, así el
-     * balance queda a la vista y se actualiza en tiempo real con las
-     * ventas y gastos que carguen todos. */
-    if (!desde || !hasta) {
-      var r = rangoMesActual();
-      desde = r.desde;
-      hasta = r.hasta;
-      if (elBalanceDesde) elBalanceDesde.value = desde;
-      if (elBalanceHasta) elBalanceHasta.value = hasta;
-    }
+    /* Un solo mes por vez, como la hoja del Excel */
+    var r = rangoDeSeleccion();
+    var desde = r.desde;
+    var hasta = r.hasta;
 
     var b = construirBalance(desde, hasta);
-
-    var titulo = b.mesCompleto
-      ? MESES_ES[Number(desde.split("-")[1]) - 1] + " " + desde.split("-")[0]
-      : "Del " + diaBonito(desde) + " al " + diaBonito(hasta);
+    var titulo = MESES_ES[Number(desde.split("-")[1]) - 1] + " " + desde.split("-")[0];
 
     if (!b.lineas.length) {
-      elBalanceTabla.innerHTML = '<p class="prod-vacio">Sin movimientos en este rango.</p>';
+      elBalanceTabla.innerHTML = '<p class="prod-vacio">Sin movimientos este mes.</p>';
       elBalanceResumen.textContent = titulo;
       if (elBalanceExportar) elBalanceExportar.hidden = true;
       return;
@@ -1759,36 +1750,26 @@
   /* ---------- balance ---------- */
 
   function enlazarBalance() {
-    if (!elBalanceCalcular) return;
+    if (!elBalanceMesSel) return;
 
-    elBalanceCalcular.addEventListener("click", function () {
-      pintarBalance();
-    });
-
-    elBalanceDesde.addEventListener("change", function () {
-      if (elBalanceHasta.value && elBalanceDesde.value > elBalanceHasta.value) {
-        elBalanceHasta.value = elBalanceDesde.value;
-      }
-      pintarBalance();
-    });
-    elBalanceHasta.addEventListener("change", function () {
-      if (elBalanceDesde.value && elBalanceHasta.value < elBalanceDesde.value) {
-        elBalanceDesde.value = elBalanceHasta.value;
-      }
+    elBalanceMesSel.addEventListener("change", function () {
       pintarBalance();
     });
 
-    elBalanceMes.addEventListener("click", function () {
-      var r = rangoMesActual();
-      elBalanceDesde.value = r.desde;
-      elBalanceHasta.value = r.hasta;
+    elBalanceAnio.addEventListener("change", function () {
       pintarBalance();
     });
+    elBalanceAnio.addEventListener("input", function () {
+      pintarBalance();
+    });
+
+    /* Valores por defecto: mes y año en curso, editables */
+    if (!elBalanceMesSel.value) elBalanceMesSel.value = String(new Date().getMonth() + 1);
+    if (!elBalanceAnio.value) elBalanceAnio.value = String(new Date().getFullYear());
 
     elBalanceExportar.addEventListener("click", function () {
-      if (elBalanceDesde.value && elBalanceHasta.value) {
-        exportarBalance(elBalanceDesde.value, elBalanceHasta.value);
-      }
+      var r = rangoDeSeleccion();
+      exportarBalance(r.desde, r.hasta);
     });
 
     /* ---------- gastos ---------- */
