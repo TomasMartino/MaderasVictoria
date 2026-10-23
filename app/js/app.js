@@ -1775,19 +1775,10 @@
        * guardada) o espera el login a mano. */
       mostrarLogin();
       auth.onAuthStateChanged(function (user) {
-        usuarioActual = user;
-        var btn = $("#cerrar-sesion");
-        if (btn) btn.hidden = !user;
         if (user) {
-          /* Listeners primero: si algo falla al enlazar la UI, las ventas
-           * quedan sincronizadas igual. Los flags evitan duplicados. */
-          escucharPresupuesto();
-          escucharVentasYGastos();
-          if (!appIniciada) {
-            appIniciada = true;
-            iniciarApp();
-          }
+          entrarConSesion(user);
         } else {
+          usuarioActual = null;
           cerrarSuscripciones();
           mostrarLogin();
         }
@@ -1795,6 +1786,22 @@
       return;
     }
     iniciarApp();
+  }
+
+  /* Único punto de entrada a la app con sesión. Idempotente: se puede
+   * llamar desde onAuthStateChanged y desde el login, sin duplicar nada. */
+  function entrarConSesion(user) {
+    usuarioActual = user;
+    var btn = $("#cerrar-sesion");
+    if (btn) btn.hidden = !user;
+    /* Listeners primero: si algo falla al enlazar la UI, las ventas
+     * quedan sincronizadas igual. Los flags evitan duplicados. */
+    escucharPresupuesto();
+    escucharVentasYGastos();
+    if (!appIniciada) {
+      appIniciada = true;
+      iniciarApp();
+    }
   }
 
   function enlazarCerrarSesion() {
@@ -1820,10 +1827,35 @@
     ev.preventDefault();
     var email = $("#login-email").value;
     var password = $("#login-password").value;
-    $("#login-errores").hidden = true;
-    auth.signInWithEmailAndPassword(email, password).catch(function (err) {
-      $("#login-errores").hidden = false;
-      $("#login-errores").textContent = err.message || "No se pudo iniciar sesión.";
+    var errores = $("#login-errores");
+    var btn = $("#form-login").querySelector('button[type="submit"]');
+
+    errores.hidden = true;
+    if (btn && btn.dataset.enviando === "1") return;
+    if (btn) {
+      btn.dataset.enviando = "1";
+      btn.disabled = true;
+      btn.textContent = "Ingresando…";
+    }
+
+    auth.signInWithEmailAndPassword(email, password).then(function (cred) {
+      /* No se depende solo del onAuthStateChanged: si el estado no dispara
+       * en la página (ocurre con file://), entramos por acá igual.
+       * entrarConSesion es idempotente, así que no hay arranque doble. */
+      entrarConSesion(cred.user);
+      if (btn) {
+        btn.dataset.enviando = "0";
+        btn.disabled = false;
+        btn.textContent = "Entrar";
+      }
+    }).catch(function (err) {
+      errores.hidden = false;
+      errores.textContent = err.message || "No se pudo iniciar sesión.";
+      if (btn) {
+        btn.dataset.enviando = "0";
+        btn.disabled = false;
+        btn.textContent = "Entrar";
+      }
     });
   }
 
