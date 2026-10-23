@@ -848,6 +848,17 @@
   var elBalanceDesde = $("#balance-desde");
   var elBalanceHasta = $("#balance-hasta");
   var elBalanceCalcular = $("#balance-calcular");
+  var elBalanceExportar = $("#balance-exportar");
+  var elBalanceMes = $("#balance-mes");
+
+  var elGastoForm = $("#gasto-form");
+  var elFormGasto = $("#form-gasto");
+  var elGastoFecha = $("#gasto-fecha");
+  var elGastoCategoria = $("#gasto-categoria");
+  var elGastoConcepto = $("#gasto-concepto");
+  var elGastoMonto = $("#gasto-monto");
+  var elGastoErrores = $("#gasto-errores");
+  var elGastoCancelar = $("#gasto-cancelar");
 
   var filtro = { texto: "", unidad: "" };
   var editando = null;
@@ -1027,6 +1038,123 @@
     /* Se usa internamente por el balance; no tiene pantalla propia en esta etapa */
   }
 
+  /* Semana corrida de lunes a lunes: devuelvo el ISO del lunes de esa fecha. */
+  function lunesISO(f) {
+    var p = f.split("-");
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    var dia = d.getDay();
+    d.setDate(d.getDate() + (dia === 0 ? -6 : 1 - dia));
+    var m = d.getMonth() + 1;
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (d.getDate() < 10 ? "0" : "") + d.getDate();
+  }
+
+  var DIAS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  var MESES_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  function diaBonito(f) {
+    var p = f.split("-");
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return DIAS_ES[d.getDay()] + " " + Number(p[2]) + "/" + Number(p[1]);
+  }
+
+  /* Arma las líneas del balance para el rango: un renglón por día con su
+   * desglose de gastos por tipo, y subtótulos cuando termina la semana o
+   * cambia el mes. Se usa para pintar y para exportar, así salen iguales. */
+  function construirLineasBalance(desde, hasta) {
+    var b = calcularBalance(desde, hasta);
+
+    var porCategoria = {};
+    gastos.forEach(function (g) {
+      if (g.anulada) return;
+      if (g.fecha < desde || g.fecha > hasta) return;
+      if (!porCategoria[g.fecha]) porCategoria[g.fecha] = {};
+      var cat = g.categoria || "Otro";
+      porCategoria[g.fecha][cat] = (porCategoria[g.fecha][cat] || 0) + g.monto;
+    });
+
+    var fechas = new Set();
+    Object.keys(b.ventasPorFecha).forEach(function (f) { fechas.add(f); });
+    Object.keys(b.gastosPorFecha).forEach(function (f) { fechas.add(f); });
+    var orden = Array.from(fechas).sort();
+
+    var lineas = [];
+    var accSem = { ventas: 0, gastos: 0 };
+    var accMes = { ventas: 0, gastos: 0 };
+    var semActual = null, mesActual = null, anterior = null;
+
+    function empujarSubtotal(tipo, etiqueta, acc) {
+      lineas.push({
+        tipo: tipo, etiqueta: etiqueta,
+        ventas: acc.ventas, gastos: acc.gastos, saldo: acc.ventas - acc.gastos,
+      });
+      acc.ventas = 0; acc.gastos = 0;
+    }
+
+    orden.forEach(function (f) {
+      var lunes = lunesISO(f);
+      var mes = f.slice(0, 7);
+      if (semActual !== null && lunes !== semActual) {
+        empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(anterior), accSem);
+      }
+      if (mesActual !== null && mes !== mesActual) {
+        if (semActual !== null) {
+          empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(anterior), accSem);
+        }
+        var p = anterior.split("-");
+        empujarSubtotal("mes", MESES_ES[Number(p[1]) - 1] + " " + p[0], accMes);
+      }
+      semActual = lunes; mesActual = mes;
+
+      var v = b.ventasPorFecha[f] || 0;
+      var g = b.gastosPorFecha[f] || 0;
+      accSem.ventas += v; accSem.gastos += g;
+      accMes.ventas += v; accMes.gastos += g;
+
+      var desglose = "";
+      var cats = porCategoria[f];
+      if (cats) {
+        desglose = Object.keys(cats).sort().map(function (c) {
+          return c + " " + TV.pesos(cats[c]);
+        }).join(" · ");
+      }
+      lineas.push({
+        tipo: "dia", etiqueta: diaBonito(f), desglose: desglose,
+        ventas: v, gastos: g, saldo: v - g,
+      });
+      anterior = f;
+    });
+
+    var fin = orden.length ? orden[orden.length - 1] : hasta;
+    if (semActual !== null) empujarSubtotal("semana", "Semana " + diaBonito(semActual) + " a " + diaBonito(fin), accSem);
+    if (mesActual !== null) {
+      var pf = fin.split("-");
+      empujarSubtotal("mes", MESES_ES[Number(pf[1]) - 1] + " " + pf[0], accMes);
+    }
+    lineas.push({
+      tipo: "total", etiqueta: "Total del período",
+      ventas: b.totalVentas, gastos: b.totalGastos, saldo: b.balance,
+    });
+
+    return { lineas: lineas, totalVentas: b.totalVentas, totalGastos: b.totalGastos, balance: b.balance };
+  }
+
+  function filaBalanceHTML(l) {
+    var clase = l.tipo === "dia"
+      ? "prod-fila"
+      : "prod-fila fila-balance-subtotal" + (l.tipo === "total" ? " fila-balance-total" : "");
+    var nombreCol = '<div class="prod__nombre-col">' +
+      '<div class="prod__nombre">' + escapar(l.etiqueta) + "</div>" +
+      (l.desglose ? '<span class="prod__unidad">' + escapar(l.desglose) + "</span>" : "") +
+    '</div>';
+    return '<div class="' + clase + '">' +
+      nombreCol +
+      '<span class="prod__precio">' + TV.pesos(l.ventas) + '</span>' +
+      '<span class="prod__formula">' + TV.pesos(l.gastos) + '</span>' +
+      '<span class="prod__stock prod__stock--vacio">' + TV.pesos(l.saldo) + '</span>' +
+      '</div>';
+  }
+
   function pintarBalance() {
     if (!elBalanceTabla) return;
 
@@ -1034,43 +1162,45 @@
     var hasta = elBalanceHasta ? elBalanceHasta.value : "";
 
     if (!desde || !hasta) {
-      elBalanceTabla.innerHTML = '<p style="color:var(--tinta-2);">Seleccioná un rango de fechas para ver el balance.</p>';
+      elBalanceTabla.innerHTML = '<p style="color:var(--tinta-2);">Elegí desde y hasta, o tocá "Este mes".</p>';
       elBalanceResumen.textContent = "";
+      if (elBalanceExportar) elBalanceExportar.hidden = true;
       return;
     }
 
-    var b = calcularBalance(desde, hasta);
+    var b = construirLineasBalance(desde, hasta);
 
-    var filas = [];
-    var fechas = new Set();
-    Object.keys(b.ventasPorFecha).forEach(function (f) { fechas.add(f); });
-    Object.keys(b.gastosPorFecha).forEach(function (f) { fechas.add(f); });
-    var fechasOrdenadas = Array.from(fechas).sort();
-
-    fechasOrdenadas.forEach(function (f) {
-      var v = b.ventasPorFecha[f] || 0;
-      var g = b.gastosPorFecha[f] || 0;
-      filas.push('<div class="prod-fila">' +
-        '<div class="prod__nombre-col">' +
-          '<div class="prod__nombre">' + escapar(f) + "</div>" +
-          '<span class="prod__unidad">Ventas · Gastos</span>' +
-        '</div>' +
-        '<span class="prod__precio">' + TV.pesos(v) + '</span>' +
-        '<span class="prod__formula">− ' + TV.pesos(g) + '</span>' +
-        '<span class="prod__stock prod__stock--vacio">' + TV.pesos(v - g) + '</span>' +
-        '</div>');
-    });
-
-    elBalanceTabla.innerHTML = filas.length
-      ? '<div class="prod-fila prod-fila--head" aria-hidden="true">' +
-        '<span>Fecha</span><span class="c-der">Ventas</span><span>Gastos</span><span class="c-der">Saldo</span></div>' +
-        filas.join("")
-      : '<p class="prod-vacio">Sin movimientos en este rango.</p>';
+    elBalanceTabla.innerHTML =
+      '<div class="prod-fila prod-fila--head" aria-hidden="true">' +
+      '<span>Fecha</span><span class="c-der">Ventas</span><span>Gastos</span><span class="c-der">Saldo</span></div>' +
+      b.lineas.map(filaBalanceHTML).join("");
 
     elBalanceResumen.innerHTML =
       '<span>Ventas: ' + TV.pesos(b.totalVentas) + '</span>' +
       '<i aria-hidden="true">·</i><span>Gastos: ' + TV.pesos(b.totalGastos) + '</span>' +
       '<i aria-hidden="true">·</i><span>Balance: ' + TV.pesos(b.balance) + '</span>';
+    if (elBalanceExportar) elBalanceExportar.hidden = false;
+  }
+
+  /* Exporta el balance al CSV que abre Excel tal cual: día, subtótulos de
+   * semana y mes, total y desglose de gastos por tipo en la columna Fecha. */
+  function exportarBalance(desde, hasta) {
+    var b = construirLineasBalance(desde, hasta);
+    var filas = ["Fecha,Ventas,Gastos,Saldo"];
+    b.lineas.forEach(function (l) {
+      var etiqueta = l.etiqueta;
+      if (l.desglose) etiqueta += " (" + l.desglose + ")";
+      filas.push(etiqueta + "," + l.ventas + "," + l.gastos + "," + l.saldo);
+    });
+    var csv = filas.join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = "balance-" + desde + "-" + hasta + ".csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    avisar("Balance exportado");
   }
 
   /* ---------- formulario de producto ---------- */
@@ -1263,15 +1393,6 @@
       b.addEventListener("click", function () { abrirForm(null); });
     });
 
-    $("#productos-planilla").addEventListener("click", function () {
-      var r = PRODUCTOS.fusionar(CAT.productos, catalogo);
-      catalogo = r.productos;
-      guardarCatalogo();
-      refrescarCatalogo();
-      elProdReporte.hidden = false;
-      elProdReporte.textContent = reporteCambios(r.cambios);
-    });
-
     $("#productos-descargar-plantilla").addEventListener("click", function () {
       descargarPlantilla();
     });
@@ -1455,10 +1576,92 @@
       if (elBalanceHasta.value && elBalanceDesde.value > elBalanceHasta.value) {
         elBalanceHasta.value = elBalanceDesde.value;
       }
+      pintarBalance();
     });
     elBalanceHasta.addEventListener("change", function () {
       if (elBalanceDesde.value && elBalanceHasta.value < elBalanceDesde.value) {
         elBalanceDesde.value = elBalanceHasta.value;
+      }
+      pintarBalance();
+    });
+
+    elBalanceMes.addEventListener("click", function () {
+      var hoy = new Date();
+      var y = hoy.getFullYear();
+      var m = hoy.getMonth() + 1;
+      var primero = y + "-" + (m < 10 ? "0" : "") + m + "-01";
+      var ultimoDia = new Date(y, m, 0).getDate();
+      var ultimo = y + "-" + (m < 10 ? "0" : "") + m + "-" + (ultimoDia < 10 ? "0" : "") + ultimoDia;
+      elBalanceDesde.value = primero;
+      elBalanceHasta.value = ultimo;
+      pintarBalance();
+    });
+
+    elBalanceExportar.addEventListener("click", function () {
+      if (elBalanceDesde.value && elBalanceHasta.value) {
+        exportarBalance(elBalanceDesde.value, elBalanceHasta.value);
+      }
+    });
+
+    /* ---------- gastos ---------- */
+
+    elGastoNuevo.addEventListener("click", function () {
+      elGastoFecha.value = hoyISO();
+      elGastoCategoria.value = "Proveedores";
+      elGastoConcepto.value = "";
+      elGastoMonto.value = "";
+      elGastoErrores.hidden = true;
+      elGastoForm.hidden = false;
+      elGastoFecha.focus();
+    });
+
+    elGastoCancelar.addEventListener("click", function () {
+      elGastoForm.hidden = true;
+    });
+
+    elGastoForm.addEventListener("click", function (ev) {
+      if (ev.target === elGastoForm) elGastoForm.hidden = true;
+    });
+
+    elFormGasto.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      elGastoErrores.hidden = true;
+
+      var btnSubmit = this.querySelector('button[type="submit"]');
+      var fecha = elGastoFecha.value;
+      var concepto = elGastoConcepto.value.trim();
+      var categoria = elGastoCategoria.value;
+      var monto = TV.parseNumero(elGastoMonto.value);
+
+      if (!fecha) {
+        elGastoErrores.textContent = "Elegí una fecha";
+        elGastoErrores.hidden = false;
+        return;
+      }
+      if (!concepto) {
+        elGastoErrores.textContent = "Poné un concepto";
+        elGastoErrores.hidden = false;
+        return;
+      }
+      if (monto === null || !(monto > 0)) {
+        elGastoErrores.textContent = "Monto inválido";
+        elGastoErrores.hidden = false;
+        return;
+      }
+
+      if (btnSubmit) {
+        btnSubmit.dataset.enviando = "1";
+        btnSubmit.textContent = "Guardando…";
+        btnSubmit.disabled = true;
+      }
+      guardarGasto({ fecha: fecha, monto: monto, concepto: concepto, categoria: categoria });
+      elGastoForm.hidden = true;
+      pintarBalance();
+      avisar("Gasto cargado");
+      if (btnSubmit) {
+        btnSubmit.dataset.enviando = "0";
+        btnSubmit.textContent = "Guardar gasto";
+        btnSubmit.disabled = false;
       }
     });
   }

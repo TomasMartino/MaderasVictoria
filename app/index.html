@@ -163,7 +163,6 @@
               <p class="prod-resumen" id="productos-resumen"></p>
             </div>
             <div class="prod-head__acciones">
-              <button id="productos-planilla" class="btn btn--ghost" type="button">Traer de la planilla</button>
               <button id="productos-descargar-plantilla" class="btn btn--ghost" type="button">Descargar plantilla</button>
               <button id="productos-agregar" class="btn btn--brand" type="button">+ Agregar producto</button>
             </div>
@@ -293,16 +292,65 @@
 
       <!-- ============ BALANCE ============ -->
       <section id="view-balance" class="view is-hidden">
-        <div class="hoja hoja--prox">
-          <span class="chip chip--rojo">Etapa 2</span>
-          <h2>Balance por fecha</h2>
-          <p>El balance se va a calcular solo, con las ventas y los gastos del mes que elijan.
-             Se termina el problema de agregar las fechas a mano: cualquier mes, cualquier año.</p>
-          <ul class="lista-prox">
-            <li>Totales por semana y por mes, sin filas fijas.</li>
-            <li>Gastos, impuestos, sueldos y proveedores por día.</li>
-            <li>Exportación al Excel de siempre en un botón.</li>
-          </ul>
+        <div class="prod-panel">
+          <header class="prod-head">
+            <div class="prod-head__titulo">
+              <h1>Balance</h1>
+              <p class="prod-resumen" id="balance-resumen"></p>
+            </div>
+            <div class="prod-head__acciones">
+              <button id="balance-exportar" class="btn btn--ghost" type="button" hidden>Exportar Excel</button>
+              <button id="balance-calcular" class="btn btn--ghost" type="button">Calcular</button>
+              <button id="gasto-nuevo" class="btn btn--brand" type="button">+ Agregar gasto</button>
+            </div>
+          </header>
+
+          <div class="prod-filtros">
+            <label class="buscador">
+              <span class="campo__label">Desde</span>
+              <input id="balance-desde" type="date">
+            </label>
+            <label class="buscador">
+              <span class="campo__label">Hasta</span>
+              <input id="balance-hasta" type="date">
+            </label>
+            <button id="balance-mes" class="btn btn--ghost" type="button">Este mes</button>
+          </div>
+
+          <div id="gasto-form" class="modal" hidden>
+            <form class="modal__caja" id="form-gasto" role="dialog" aria-modal="true" aria-labelledby="gasto-titulo" novalidate>
+              <h2 class="modal__titulo" id="gasto-titulo">Nuevo gasto</h2>
+              <label class="campo">
+                <span class="campo__label">Fecha</span>
+                <input id="gasto-fecha" class="campo__input" type="date" required>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Tipo</span>
+                <select id="gasto-categoria" class="campo__input" required>
+                  <option value="Proveedores">Proveedores</option>
+                  <option value="Sueldos">Sueldos</option>
+                  <option value="Impuestos">Impuestos</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Concepto</span>
+                <input id="gasto-concepto" class="campo__input" type="text" placeholder="Ej: Madera, Monotributo" required>
+              </label>
+              <label class="campo">
+                <span class="campo__label">Monto</span>
+                <input id="gasto-monto" class="campo__input" type="text" inputmode="decimal" placeholder="12.500" required>
+              </label>
+              <p class="modal__error" id="gasto-errores" hidden></p>
+              <div class="modal__pie">
+                <button type="button" class="btn btn--ghost" id="gasto-cancelar">Cancelar</button>
+                <span class="modal__espacio"></span>
+                <button type="submit" class="btn btn--brand">Guardar gasto</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="balance-tabla"></div>
         </div>
       </section>
 

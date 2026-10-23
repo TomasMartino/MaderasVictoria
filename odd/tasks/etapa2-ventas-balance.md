@@ -36,3 +36,7 @@ Test runner: `node --test "tests/*.test.mjs"` (Node 24, Edge headless for the sc
 - **L3** — Las 5 cuentas de usuario ya están creadas en Firebase Authentication (vityDiamante, joacoDiamante, ezequielDiamante, Diamante + una más). Cada venta/gasto queda firmado con el usuario que lo cargó.
 - **L4** — Modo local: si Firebase no está disponible, ventas y gastos se guardan en localStorage y la app sigue funcionando.
 - **L1** — Request: continuar con la etapa 2 (ventas, gastos y balance compartido en tiempo real con Firebase). Como en el Excel: ventas por un lado, balance por otro, el balance se actualiza solo con las ventas.
+
+## Log (append)
+
+- L5 (23/10): Balance real: se reemplazó el placeholder de #view-balance por pantalla completa (rangos, subtotales semana/mes, desglose de gastos por categoría por día, exportar CSV, form de gastos Proveedores/Sueldos/Impuestos/Otro). Botón 'Traer de la planilla' eliminado; queda 'Descargar plantilla'. Commit 687ab25 + este.
