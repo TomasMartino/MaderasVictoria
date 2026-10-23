@@ -421,9 +421,18 @@
       var linea = buscar(Number(filas[i].dataset.id));
       var input = $(".prod-buscar", filas[i]);
       if (!input || !linea) continue;
-      var p = linea.producto ? PRODUCTOS.buscar(catalogo, linea.producto) : null;
-      input.value = p ? etiquetaProducto(p) : "";
+      input.value = etiquetaMostrada(linea.producto);
     }
+  }
+
+  /* Lo que muestra el campo del producto elegido. Los dados de baja no
+   * aparecen en la lista, pero si una línea guardada todavía tiene uno,
+   * el campo lo marca "(anulado)" en vez de perder el nombre y el total
+   * en silencio. */
+  function etiquetaMostrada(nombre) {
+    var p = nombre ? PRODUCTOS.buscar(catalogo, nombre) : null;
+    if (!p) return "";
+    return etiquetaProducto(p) + (p.activo ? "" : " (anulado)");
   }
 
   /* Lista filtrada para el buscador del dropdown de producto, agrupada por
@@ -550,8 +559,7 @@
     var largo = $(".largo", row);
 
     function etiquetaDe(nombre) {
-      var p = nombre ? PRODUCTOS.buscar(catalogo, nombre) : null;
-      return p ? etiquetaProducto(p) : "";
+      return etiquetaMostrada(nombre);
     }
 
     function ponerValor(nombre) {
