@@ -1216,10 +1216,11 @@ button, input, select { font: inherit; color: inherit; }
 
 .app--login .rail, .app--login .actionbar, .app--login .content > .view:not(#view-login) { display: none; }
 
-/* Buscador interno del selector de producto (dropdown con filtro) */
-.prod-drop { position: relative; display: block; width: 100%; }
-.prod-buscar { width: 100%; box-sizing: border-box; border: 1px solid var(--linea); border-radius: 8px; background: var(--papel); padding: 7px 10px; font: inherit; font-size: 14px; color: var(--tinta); }
-.prod-buscar:focus { outline: none; border-color: var(--madera); }
+/* Buscador interno del selector de producto (dropdown con filtro).
+ * El input y la lista van directos dentro de .f--prod: un wrapper span
+ * quedaría oculto por .f > span { display: none } en la grilla escritorio. */
+.f--prod { position: relative; }
+.f--prod .prod-buscar { font-weight: 500; }
 .prod-drop__lista { position: absolute; top: 100%; left: 0; right: 0; z-index: 40; max-height: 260px; overflow-y: auto; background: var(--papel); border: 1px solid var(--linea); border-radius: 8px; box-shadow: 0 8px 24px rgba(43, 33, 24, .14); margin-top: 3px; }
 .prod-drop__grupo { position: sticky; top: 0; background: var(--papel-2); padding: 4px 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-2); }
 .prod-drop__op { padding: 7px 10px; font-size: 13.5px; color: var(--tinta); cursor: pointer; border-top: 1px solid var(--papel-2); }

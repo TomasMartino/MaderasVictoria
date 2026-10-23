@@ -531,10 +531,8 @@
     row.innerHTML =
       '<span class="linea__n"></span>' +
       '<label class="f f--prod"><span>Producto</span>' +
-        '<span class="prod-drop">' +
-          '<input class="prod-buscar" type="text" autocomplete="off" placeholder="Buscar producto…">' +
-          '<div class="prod-drop__lista" hidden></div>' +
-        "</span>" +
+        '<input class="prod-buscar" type="text" autocomplete="off" placeholder="Buscar producto…">' +
+        '<div class="prod-drop__lista" hidden></div>' +
         '<span class="prod-nombre"></span></label>' +
       '<label class="f f--cant"><span>Cantidad</span>' +
         '<input class="cant" type="text" inputmode="decimal" autocomplete="off" placeholder="0"></label>' +
