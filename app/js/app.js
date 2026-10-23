@@ -800,10 +800,10 @@
   var elVentaErrores = $("#venta-errores");
   var elVentaCancelar = $("#venta-cancelar");
 
-    var elVentasDesde = ventas-desde;
-  var elVentasHasta = ventas-hasta;
-  var elVentasMedioFiltro = ventas-medio-filtro;
-  var elVentasHoy = ventas-hoy;
+  var elVentasDesde = $("#ventas-desde");
+  var elVentasHasta = $("#ventas-hasta");
+  var elVentasMedioFiltro = $("#ventas-medio-filtro");
+  var elVentasHoy = $("#ventas-hoy");
 
   var filtroVentas = { texto: "", fechaDesde: "", fechaHasta: "", medio: "" };
 
