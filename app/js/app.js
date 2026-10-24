@@ -1126,6 +1126,13 @@
       html += "</div>";
     });
     elExcelCambios.innerHTML = html;
+
+    /* Los botones masivos solo sirven si hay algo pendiente por decidir. */
+    var hayPendientes = revisionExcel.some(function (c) { return !c.estado; });
+    $("#excel-aceptar-todo").hidden = !hayPendientes;
+    $("#excel-denegar-todo").hidden = !hayPendientes;
+    $("#excel-aceptar-pendientes").hidden = !hayPendientes;
+    $("#excel-denegar-pendientes").hidden = !hayPendientes;
   }
 
   function aplicarCambio(c) {
@@ -1251,6 +1258,25 @@
     }
     revisionExcel = [];
     elModalExcel.hidden = true;
+  }
+
+  /* Aplica una decisión (ok / no) a todos los cambios que aún no tienen
+   * estado. Aceptar llama a aplicarCambio; denegar solo lo marca. Cierra el
+   * modal al terminar y avisa el resumen. */
+  function aplicarMasivo(decision) {
+    var pendientes = revisionExcel.filter(function (c) { return !c.estado; });
+    if (!pendientes.length) return;
+    pendientes.forEach(function (c) {
+      if (decision === "ok") aplicarCambio(c);
+      c.estado = decision === "ok" ? "ok" : "no";
+    });
+    pintarRevision();
+    elModalExcel.hidden = true;
+    var total = revisionExcel.length;
+    var aplicados = revisionExcel.filter(function (x) { return x.estado === "ok"; }).length;
+    var denegados = total - aplicados;
+    revisionExcel = [];
+    avisar("Revisión lista: " + aplicados + " aplicados, " + denegados + " denegados");
   }
 
   /* origen: "productos" | "ventas" | "balance" */
@@ -2015,6 +2041,11 @@
     });
 
     $("#excel-cancelar").addEventListener("click", cerrarExcel);
+
+    $("#excel-aceptar-todo").addEventListener("click", function () { aplicarMasivo("ok"); });
+    $("#excel-denegar-todo").addEventListener("click", function () { aplicarMasivo("no"); });
+    $("#excel-aceptar-pendientes").addEventListener("click", function () { aplicarMasivo("ok"); });
+    $("#excel-denegar-pendientes").addEventListener("click", function () { aplicarMasivo("no"); });
 
     elPUnidad.addEventListener("click", function (ev) {
       var b = ev.target.closest(".tipo");
