@@ -2253,19 +2253,25 @@
 
   function iniciar() {
     if (usaFirebase) {
-      /* El login es la pantalla principal: arranca siempre en login y el
-       * onAuthStateChanged decide si entra directo al presupuesto (sesión
-       * guardada) o espera el login a mano. */
-      mostrarLogin();
-      auth.onAuthStateChanged(function (user) {
-        if (user) {
-          entrarConSesion(user);
-        } else {
-          usuarioActual = null;
-          cerrarSuscripciones();
-          mostrarLogin();
-        }
-      });
+      /* Si ya hay sesión guardada (sobrevive al reinicio de la PC), entrar
+       * directo sin parpadear el login. auth.currentUser cubre file://, donde
+       * onAuthStateChanged no dispara confiablemente; el listener cubre el
+       * logout desde otra pestaña. */
+      var user = auth.currentUser;
+      if (user) {
+        entrarConSesion(user);
+      } else {
+        mostrarLogin();
+        auth.onAuthStateChanged(function (user) {
+          if (user) {
+            entrarConSesion(user);
+          } else {
+            usuarioActual = null;
+            cerrarSuscripciones();
+            mostrarLogin();
+          }
+        });
+      }
       return;
     }
     iniciarApp();
