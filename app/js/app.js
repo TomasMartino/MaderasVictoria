@@ -1083,6 +1083,8 @@
 
   /* ---------- comparar con el excel ---------- */
 
+  var revisionExcel = [];
+
   /* La planilla es la fuente original (catalogo.js se genero de la hoja
    * PRECIOS). Suben el .xlsx actualizado, la app compara contra el
    * catalogo y propone cada cambio para aceptar o denegar uno por uno.
