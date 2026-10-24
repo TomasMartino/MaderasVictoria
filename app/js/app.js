@@ -900,6 +900,8 @@
   var elProdResumen = $("#productos-resumen");
   var elProdComparar = $("#productos-comparar");
   var elExcelInput = $("#productos-excel");
+  var elVentasExcelInput = $("#ventas-excel");
+  var elBalanceExcelInput = $("#balance-excel");
   var elModalExcel = $("#modal-excel");
   var elExcelCambios = $("#excel-cambios");
   var elExcelResumen = $("#excel-resumen");
@@ -1127,6 +1129,42 @@
   }
 
   function aplicarCambio(c) {
+    /* ---------- ventas desde Excel ---------- */
+    if (c._origen === "ventas") {
+      if (c.tipo === "nuevo") {
+        guardarVenta({
+          fecha: c.venta.fecha,
+          monto: c.venta.monto,
+          medioPago: c.venta.medioPago,
+          detalle: c.venta.detalle,
+        });
+      } else if (c.tipo === "campo" && c.campo === "monto") {
+        var v = ventas.find(function (x) {
+          return x.fecha === c.fecha && PRODUCTOS.clave(x.detalle || "") === PRODUCTOS.clave(c.detalle);
+        });
+        if (v) {
+          v.monto = c.valores.a;
+          guardarVentasLocales();
+        }
+      }
+      pintarVentas();
+      pintarBalance();
+      return;
+    }
+
+    /* ---------- balance desde Excel ---------- */
+    if (c._origen === "balance") {
+      if (c.tipo === "campo" && c.campo === "ventas") {
+        aplicarBalanceCampo(c, "ventas");
+      } else if (c.tipo === "campo" && c.campo === "gastos") {
+        aplicarBalanceCampo(c, "gastos");
+      }
+      pintarVentas();
+      pintarBalance();
+      return;
+    }
+
+    /* ---------- catalogo de productos (original) ---------- */
     if (c.tipo === "nuevo") {
       catalogo.push({
         nombre: c.producto.nombre,
@@ -1160,6 +1198,33 @@
     pintarProductos();
   }
 
+  /* Ajusta una sola venta/gasto del día para que coincida con el Excel.
+   * Si hay exactamente uno, lo edita. Si no hay ninguno, lo crea. Si hay
+   * varios, no toca nada (no se sabe cuál corregir). */
+  function aplicarBalanceCampo(c, campo) {
+    var fecha = c.fecha;
+    if (campo === "ventas") {
+      var vs = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
+      var valor = c.valores.a;
+      if (vs.length === 1) {
+        vs[0].monto = valor;
+        guardarVentasLocales();
+      } else if (vs.length === 0) {
+        guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha + " (desde Excel)" });
+      }
+      /* varios: se deja como está */
+    } else if (campo === "gastos") {
+      var gs = gastos.filter(function (x) { return !x.anulada && x.fecha === fecha; });
+      var valor = c.valores.a;
+      if (gs.length === 1) {
+        gs[0].monto = valor;
+        guardarGastosLocales();
+      } else if (gs.length === 0) {
+        guardarGasto({ fecha: fecha, monto: valor, concepto: "Gastos " + fecha + " (desde Excel)", categoria: "Otros" });
+      }
+    }
+  }
+
   function decidir(i, decision) {
     var c = revisionExcel[i];
     if (!c || c.estado) return;
@@ -1188,7 +1253,8 @@
     elModalExcel.hidden = true;
   }
 
-  function abrirExcel(archivo) {
+  /* origen: "productos" | "ventas" | "balance" */
+  function abrirExcel(archivo, origen) {
     if (!archivo) return;
     if (typeof XLSX === "undefined") {
       avisar("No se pudo cargar el lector de Excel. Revisá la conexión a internet y recargá.");
@@ -1201,7 +1267,21 @@
         var nombreHoja = hojas.SheetNames.indexOf("PRECIOS") !== -1 ? "PRECIOS" : hojas.SheetNames[0];
         console.log("Excel subido: hoja elegida =", nombreHoja, "· hojas =", hojas.SheetNames.join(", "));
         var filas = XLSX.utils.sheet_to_json(hojas.Sheets[nombreHoja], { header: 1, defval: null });
-        var r = PLANILLA.revisar(filas, catalogo, numeroCorto);
+        var r;
+        var tituloHoja;
+        if (origen === "ventas") {
+          r = TV_PLANILLA_VENTAS.revisar(filas, ventas, numeroCorto);
+          tituloHoja = "VENTAS DIARIAS";
+        } else if (origen === "balance") {
+          r = TV_PLANILLA_BALANCE.revisar(filas, ventas, gastos, numeroCorto);
+          tituloHoja = "BALANCE";
+        } else {
+          origen = "productos";
+          r = PLANILLA.revisar(filas, catalogo, numeroCorto);
+          tituloHoja = "PRECIOS";
+        }
+        /* Marca cada propuesta con su origen para aplicarCambio */
+        r.cambios.forEach(function (c) { c._origen = origen; });
         revisionExcel = r.cambios;
         elModalExcel.hidden = false;
         elExcelError.hidden = true;
@@ -1209,13 +1289,13 @@
         if (r.sinEncabezado) {
           revisionExcel = [];
           elExcelError.hidden = false;
-          elExcelError.textContent = "No encontré una columna NOMBRE/PRODUCTO en la hoja \"" + nombreHoja + "\". Probá con la planilla PRESUPUESTO.xlsx (hoja PRECIOS).";
+          elExcelError.textContent = "No encontré las columnas esperadas en la hoja \"" + nombreHoja + "\". Probá con Ingresos Y Gastos Semanales (hoja " + tituloHoja + ").";
         } else if (revisionExcel.length === 0) {
           elExcelError.hidden = false;
-          elExcelError.textContent = "El Excel coincide con el catálogo: no hay cambios para revisar.";
+          elExcelError.textContent = "El Excel coincide: no hay cambios para revisar.";
         } else if (r.ignoradas.length) {
           elExcelError.hidden = false;
-          elExcelError.textContent = "Filas ignoradas (falta unidad válida): " + r.ignoradas.join(", ");
+          elExcelError.textContent = "Filas ignoradas (datos incompletos): " + r.ignoradas.join(", ");
         }
       } catch (e) {
         console.error("Lectura del Excel:", e);
@@ -1898,7 +1978,26 @@
     });
 
     elExcelInput.addEventListener("change", function () {
-      abrirExcel(this.files && this.files[0]);
+      abrirExcel(this.files && this.files[0], "productos");
+    });
+
+    elVentasExcelInput = $("#ventas-excel");
+    elBalanceExcelInput = $("#balance-excel");
+
+    $("#ventas-comparar").addEventListener("click", function () {
+      elVentasExcelInput.value = "";
+      elVentasExcelInput.click();
+    });
+    elVentasExcelInput.addEventListener("change", function () {
+      abrirExcel(this.files && this.files[0], "ventas");
+    });
+
+    $("#balance-comparar").addEventListener("click", function () {
+      elBalanceExcelInput.value = "";
+      elBalanceExcelInput.click();
+    });
+    elBalanceExcelInput.addEventListener("change", function () {
+      abrirExcel(this.files && this.files[0], "balance");
     });
 
     elExcelCambios.addEventListener("click", function (ev) {
