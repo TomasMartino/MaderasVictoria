@@ -184,6 +184,99 @@
     }
   }
 
+  /* Edita una venta existente (monto, detalle, medio de pago, fecha). */
+  function editarVenta(id, campos) {
+    var v = ventas.find(function (x) { return x.id === id; });
+    if (!v) return;
+    Object.keys(campos || {}).forEach(function (k) { v[k] = campos[k]; });
+    if (!usaFirebase || !usuarioActual) {
+      guardarVentasLocales();
+      pintarVentas();
+      pintarBalance();
+      return;
+    }
+    try {
+      db.collection("ventas").doc(id).update(campos).catch(function (err) {
+        guardarVentasLocales();
+        pintarVentas();
+        pintarBalance();
+        avisar("La venta no se editó en la nube: quedó en este equipo");
+      });
+    } catch (e) {
+      guardarVentasLocales();
+      pintarVentas();
+      pintarBalance();
+    }
+  }
+
+  /* Edita un gasto existente (monto, concepto, categoría, fecha). */
+  function editarGasto(id, campos) {
+    var g = gastos.find(function (x) { return x.id === id; });
+    if (!g) return;
+    Object.keys(campos || {}).forEach(function (k) { g[k] = campos[k]; });
+    if (!usaFirebase || !usuarioActual) {
+      guardarGastosLocales();
+      pintarGastos();
+      pintarBalance();
+      return;
+    }
+    try {
+      db.collection("gastos").doc(id).update(campos).catch(function (err) {
+        guardarGastosLocales();
+        pintarGastos();
+        pintarBalance();
+        avisar("El gasto no se editó en la nube: quedó en este equipo");
+      });
+    } catch (e) {
+      guardarGastosLocales();
+      pintarGastos();
+      pintarBalance();
+    }
+  }
+
+  /* Aplica la edición de una fila del balance (un día) a las ventas y
+   * gastos subyacentes. Los campos son los totales del día por categoría. */
+  function aplicarEdicionFilaBalance(fecha, valores) {
+    /* --- Ventas --- */
+    var vdias = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
+    var ventasActual = vdias.reduce(function (s, v) { return s + (typeof v.monto === "number" ? v.monto : 0); }, 0);
+    var ventasNuevo = typeof valores.ventas === "number" ? valores.ventas : 0;
+    if (vdias.length === 1) {
+      editarVenta(vdias[0].id, { monto: ventasNuevo });
+    } else if (vdias.length === 0 && ventasNuevo > 0) {
+      guardarVenta({ fecha: fecha, monto: ventasNuevo, medioPago: "Efectivo", detalle: "Ventas " + fecha });
+    } else if (vdias.length > 1) {
+      editarVenta(vdias[0].id, { monto: ventasNuevo });
+    }
+
+    /* --- Gastos por categoría --- */
+    var categorias = [
+      { clave: "gastos", categoria: "Otros", campo: "gastos" },
+      { clave: "impuestos", categoria: "Impuestos", campo: "impuestos" },
+      { clave: "sueldos", categoria: "Sueldos", campo: "sueldos" },
+      { clave: "proveedores", categoria: "Proveedores", campo: "proveedores" },
+    ];
+    categorias.forEach(function (cat) {
+      var gdias = gastos.filter(function (x) {
+        return !x.anulada && x.fecha === fecha && x.categoria === cat.categoria;
+      });
+    var actual = gdias.reduce(function (s, g) { return s + (typeof g.monto === "number" ? g.monto : 0); }, 0);
+    var nuevo = typeof valores[cat.campo] === "number" ? valores[cat.campo] : 0;
+    if (gdias.length === 1) {
+      editarGasto(gdias[0].id, { monto: nuevo });
+    } else if (gdias.length === 0 && nuevo > 0) {
+      guardarGasto({ fecha: fecha, monto: nuevo, concepto: cat.categoria + " " + fecha, categoria: cat.categoria });
+    } else if (gdias.length > 1) {
+      editarGasto(gdias[0].id, { monto: nuevo });
+    }
+    });
+
+    pintarVentas();
+    pintarGastos();
+    pintarBalance();
+    avisar("Fila del balance actualizada");
+  }
+
   /* Anula una venta: la marca como anulada con motivo. No se borra. */
   function anularVenta(id, motivo) {
     if (!usaFirebase || !usuarioActual) {
@@ -954,6 +1047,17 @@
   var elBalanceQuitar = $("#balance-quitar");
   var elBalanceExportar = $("#balance-exportar");
   var elBalanceAplicar = $("#balance-aplicar");
+  var elEditarBalance = $("#modal-editar-balance");
+  var elEditarBalanceFecha = $("#editar-balance-fecha");
+  var elEditarBalanceFechaTexto = $("#editar-balance-fecha-texto");
+  var elEditarBalanceVentas = $("#editar-balance-ventas");
+  var elEditarBalanceGastos = $("#editar-balance-gastos");
+  var elEditarBalanceImpuestos = $("#editar-balance-impuestos");
+  var elEditarBalanceSueldos = $("#editar-balance-sueldos");
+  var elEditarBalanceProveedores = $("#editar-balance-proveedores");
+  var elEditarBalanceError = $("#editar-balance-error");
+  var elEditarBalanceGuardar = $("#editar-balance-guardar");
+  var elEditarBalanceCancelar = $("#editar-balance-cancelar");
   var elGastoNuevo = $("#gasto-nuevo");
 
   var elGastoForm = $("#gasto-form");
@@ -1620,6 +1724,7 @@
       '<th class="num">Total Ingresos</th>' +
       '<th class="num">Total Egresos</th>' +
       '<th class="num">Resultado Neto</th>' +
+      '<th>Editar</th>' +
       '</tr></thead>';
   }
 
@@ -1646,6 +1751,9 @@
       celdaMonto(l, "ingresos", enBlanco) +
       celdaMonto(l, "egresos", enBlanco) +
       celdaMonto(l, "neto", enBlanco) +
+      (l.tipo === "dia"
+        ? '<td class="accion"><button type="button" class="btn btn--ghost btn-editar-balance" data-fecha="' + escapar(l.fecha) + '" title="Editar fila">✏</button></td>'
+        : '<td></td>') +
       "</tr>";
   }
 
@@ -2253,6 +2361,48 @@
     elBalanceExportar.addEventListener("click", function () {
       var r = rangoDeSeleccion();
       exportarBalance(r.desde, r.hasta);
+    });
+
+    /* ---------- editar fila de balance (lapicito) ---------- */
+    elBalanceTabla.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".btn-editar-balance");
+      if (!btn) return;
+      var fecha = btn.dataset.fecha;
+      if (!fecha) return;
+      var mov = recolectarMovimientos(rangoDeSeleccion().desde, rangoDeSeleccion().hasta);
+      var f = mov.ventasPorFecha[fecha] !== undefined || mov.gastosPorFecha[fecha] !== undefined;
+      if (!f) return;
+      var dia = filaDiaBalance(fecha, mov);
+      elEditarBalanceFecha.value = fecha;
+      elEditarBalanceFechaTexto.textContent = fecha + " · " + dia.etiqueta;
+      elEditarBalanceVentas.value = dia.ventas === 0 ? "" : numeroCorto(dia.ventas);
+      elEditarBalanceGastos.value = dia.gastos === 0 ? "" : numeroCorto(dia.gastos);
+      elEditarBalanceImpuestos.value = dia.impuestos === 0 ? "" : numeroCorto(dia.impuestos);
+      elEditarBalanceSueldos.value = dia.sueldos === 0 ? "" : numeroCorto(dia.sueldos);
+      elEditarBalanceProveedores.value = dia.proveedores === 0 ? "" : numeroCorto(dia.proveedores);
+      elEditarBalanceError.hidden = true;
+      elEditarBalance.hidden = false;
+    });
+
+    elEditarBalanceCancelar.addEventListener("click", function () {
+      elEditarBalance.hidden = true;
+    });
+
+    elEditarBalanceGuardar.addEventListener("click", function () {
+      var fecha = elEditarBalanceFecha.value;
+      if (!fecha) return;
+      var parse = function (el) {
+        var v = TV.parseNumero(el.value);
+        return typeof v === "number" ? v : 0;
+      };
+      aplicarEdicionFilaBalance(fecha, {
+        ventas: parse(elEditarBalanceVentas),
+        gastos: parse(elEditarBalanceGastos),
+        impuestos: parse(elEditarBalanceImpuestos),
+        sueldos: parse(elEditarBalanceSueldos),
+        proveedores: parse(elEditarBalanceProveedores),
+      });
+      elEditarBalance.hidden = true;
     });
 
     /* ---------- gastos ---------- */

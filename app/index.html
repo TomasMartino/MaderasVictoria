@@ -469,6 +469,45 @@
   </div>
 </div>
 
+<!-- ============ EDITAR FILA DE BALANCE ============ -->
+<div id="modal-editar-balance" class="modal" hidden>
+  <div class="modal__caja modal__caja--ancha" role="dialog" aria-modal="true" aria-labelledby="editar-balance-titulo">
+    <h2 class="modal__titulo" id="editar-balance-titulo">Editar fila del balance</h2>
+    <p class="modal__error" id="editar-balance-error" hidden></p>
+    <input type="hidden" id="editar-balance-fecha">
+    <label class="campo">
+      <span class="campo__label">Fecha</span>
+      <span id="editar-balance-fecha-texto" style="display:block;font-size:13px;color:var(--tinta-2);margin-bottom:8px;"></span>
+    </label>
+    <label class="campo">
+      <span class="campo__label">Ventas</span>
+      <input id="editar-balance-ventas" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+    </label>
+    <label class="campo">
+      <span class="campo__label">Gastos (otros)</span>
+      <input id="editar-balance-gastos" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+    </label>
+    <label class="campo">
+      <span class="campo__label">Impuestos</span>
+      <input id="editar-balance-impuestos" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+    </label>
+    <label class="campo">
+      <span class="campo__label">Sueldos</span>
+      <input id="editar-balance-sueldos" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+    </label>
+    <label class="campo">
+      <span class="campo__label">Proveedores</span>
+      <input id="editar-balance-proveedores" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+    </label>
+    <p class="campo__ayuda" style="margin-top:10px;">Modificá los valores y guardá. Se actualizan las ventas/gastos de ese día.</p>
+    <div class="modal__pie">
+      <span class="modal__espacio"></span>
+      <button type="button" class="btn btn--ghost" id="editar-balance-cancelar">Cancelar</button>
+      <button type="button" class="btn btn--brand" id="editar-balance-guardar">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
