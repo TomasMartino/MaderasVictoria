@@ -1264,7 +1264,14 @@
     lector.onload = function () {
       try {
         var hojas = XLSX.read(lector.result, { type: "array" });
-        var nombreHoja = hojas.SheetNames.indexOf("PRECIOS") !== -1 ? "PRECIOS" : hojas.SheetNames[0];
+        var nombreHoja;
+        if (origen === "ventas") {
+          nombreHoja = hojas.SheetNames.indexOf("VENTAS DIARIAS") !== -1 ? "VENTAS DIARIAS" : hojas.SheetNames[0];
+        } else if (origen === "balance") {
+          nombreHoja = hojas.SheetNames.indexOf("BALANCE") !== -1 ? "BALANCE" : hojas.SheetNames[0];
+        } else {
+          nombreHoja = hojas.SheetNames.indexOf("PRECIOS") !== -1 ? "PRECIOS" : hojas.SheetNames[0];
+        }
         console.log("Excel subido: hoja elegida =", nombreHoja, "· hojas =", hojas.SheetNames.join(", "));
         var filas = XLSX.utils.sheet_to_json(hojas.Sheets[nombreHoja], { header: 1, defval: null });
         var r;
