@@ -344,10 +344,13 @@
   /* Borra TODAS las ventas y gastos activos (pide confirmación doble).
    * Es la única excepción a la regla de "no se borra": el tío pidió poder
    * empezar de cero. EnFirebase borra también los documentos de la nube. */
+  /* Borra TODO para arrancar desde cero: ventas y gastos de Firebase,
+   * y productos, presupuesto y ventas/gastos del localStorage.
+   * Recarga la página al terminar para que todo empiece limpio. */
   function limpiarTodo() {
-    var primera = window.confirm("Esto borra TODAS las ventas y gastos guardados (en este dispositivo y en la nube). ¿Seguro que querés continuar?");
+    var primera = window.confirm("Esto borra TODO: ventas, gastos, productos y presupuesto de este dispositivo, y ventas/gastos de Firebase (la nube). ¿Seguro que querés continuar?");
     if (!primera) return;
-    var segunda = window.confirm("Confirmación final: los datos borrados no se pueden recuperar. ¿Borrar todo?");
+    var segunda = window.confirm("Confirmación final: no se puede deshacer. ¿Reiniciar desde cero?");
     if (!segunda) return;
 
     if (usaFirebase && usuarioActual) {
@@ -364,15 +367,19 @@
       /* El onSnapshot refresca la vista cuando la nube termina de borrar. */
     }
 
-    /* Modo local o mientras llega el snapshot: dejamos el array vacío ya. */
     ventas = []; gastos = [];
     try {
       localStorage.removeItem("tiovity.ventas.v1");
       localStorage.removeItem("tiovity.gastos.v1");
+      localStorage.removeItem("tiovity.productos.v1");
+      localStorage.removeItem("tiovity.presupuesto.v1");
     } catch (e) {}
-    pintarVentas();
-    pintarGastos();
-    pintarBalance();
+
+    catalogo = [];
+    crearMotor();
+    refrescarSelects();
+
+    location.reload();
   }
 
   /* Escucha cambios en ventas y gastos en tiempo real. Solo una vez por sesión. */
