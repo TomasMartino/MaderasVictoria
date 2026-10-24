@@ -101,6 +101,35 @@
     }
     var sinEncabezado = !(mapa && mapa.fecha !== undefined && mapa.ventas !== undefined);
 
+    /* Auto-detectar la columna de fecha: algunas planillas (BALANCE de este
+     * Excel) ponen el encabezado "Día" en una columna que en los datos trae
+     * texto ("Jueves", "Viernes"), mientras el serial de Excel (numero) esta
+     * en la columna anterior sin encabezado. Si la columna mapeada no trae
+     * numeros, buscamos la primera que sí los tenga. */
+    if (mapa && mapa.fecha !== undefined) {
+      var pareceNumerica = false;
+      var probeHasta = Math.min(desde + 8, filas.length);
+      for (var z = desde; z < probeHasta; z++) {
+        if (typeof filas[z][mapa.fecha] === "number") { pareceNumerica = true; break; }
+      }
+      if (!pareceNumerica) {
+        for (var c = 0; c < filas[desde].length; c++) {
+          var hayNumero = false;
+          for (var z = desde; z < probeHasta; z++) {
+            if (typeof filas[z][c] === "number") { hayNumero = true; break; }
+          }
+          if (hayNumero &&
+              c !== mapa.ventas && c !== mapa.gastos &&
+              c !== mapa.impuestos && c !== mapa.sueldos &&
+              c !== mapa.proveedores && c !== mapa.totalIngresos &&
+              c !== mapa.totalEgresos && c !== mapa.resultadoNeto) {
+            mapa = Object.assign({}, mapa, { fecha: c });
+            break;
+          }
+        }
+      }
+    }
+
     var cambios = [];
     var vistos = {};
     var fila;
