@@ -367,7 +367,7 @@
    * - "solo-ventas": solo ventas (local y Firebase), no toca gastos ni balance
    * Recarga la página al terminar para que todo empiece limpio. */
   function borrarDatos(opcion) {
-    var mensajeTodo = "Esto borra TODO: ventas, gastos, productos y presupuesto de este dispositivo, y ventas/gastos de Firebase (la nube). ¿Seguro que querés continuar?";
+    var mensajeTodo = "Esto borra TODO: ventas, gastos, productos y presupuesto de este dispositivo, y ventas/gastos/presupuestos de Firebase (la nube). ¿Seguro que querés continuar?";
     var mensajeSoloVentas = "Esto borra solo las ventas diarias (local y Firebase). Los gastos y el balance no se tocan. ¿Seguro que querés continuar?";
     var mensaje = (opcion === "solo-ventas") ? mensajeSoloVentas : mensajeTodo;
 
@@ -401,6 +401,15 @@
           }).catch(function () {})
         );
       }
+      if (borrarPresupuesto) {
+        promesas.push(
+          db.collection("presupuestos").get().then(function (snap) {
+            var batch = db.batch();
+            snap.forEach(function (doc) { batch.delete(doc.ref); });
+            return batch.commit();
+          }).catch(function () {})
+        );
+      }
     }
 
     Promise.all(promesas).then(function () {
@@ -411,6 +420,7 @@
         if (borrarGastos) localStorage.removeItem("tiovity.gastos.v1");
         if (borrarProductos) localStorage.removeItem("tiovity.productos.v1");
         if (borrarPresupuesto) localStorage.removeItem("tiovity.presupuesto.v1");
+        if (borrarPresupuesto) localStorage.removeItem("tiovity.presupuesto-activo");
       } catch (e) {}
 
       if (borrarProductos) {
