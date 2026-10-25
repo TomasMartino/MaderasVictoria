@@ -2111,7 +2111,7 @@
       if (!segunda) return;
       catalogo = [];
       CAT.productos.forEach(function (p) {
-        catalogo.push(JSON.parse(JSON.stringify(p)));
+        catalogo.push(Object.assign({}, p, { activo: true }));
       });
       guardarCatalogo();
       crearMotor();
