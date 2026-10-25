@@ -1304,10 +1304,8 @@
 
     /* ---------- balance desde Excel ---------- */
     if (c._origen === "balance") {
-      if (c.tipo === "campo" && c.campo === "ventas") {
-        aplicarBalanceCampo(c, "ventas");
-      } else if (c.tipo === "campo" && c.campo === "gastos") {
-        aplicarBalanceCampo(c, "gastos");
+      if (c.tipo === "campo" && (c.campo === "ventas" || c.campo === "gastos" || c.campo === "impuestos" || c.campo === "sueldos" || c.campo === "proveedores")) {
+        aplicarBalanceCampo(c, c.campo);
       }
       pintarVentas();
       pintarBalance();
@@ -1353,26 +1351,42 @@
    * varios, no toca nada (no se sabe cuál corregir). */
   function aplicarBalanceCampo(c, campo) {
     var fecha = c.fecha;
+    var valor = typeof c.valores.a === "number" ? c.valores.a : 0;
+
     if (campo === "ventas") {
       var vs = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
-      var valor = c.valores.a;
       if (vs.length === 1) {
-        vs[0].monto = valor;
-        guardarVentasLocales();
-      } else if (vs.length === 0) {
-        guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha + " (desde Excel)" });
+        editarVenta(vs[0].id, { monto: valor });
+      } else if (vs.length === 0 && valor > 0) {
+        guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha });
+      } else if (vs.length > 1) {
+        editarVenta(vs[0].id, { monto: valor });
       }
-      /* varios: se deja como está */
-    } else if (campo === "gastos") {
-      var gs = gastos.filter(function (x) { return !x.anulada && x.fecha === fecha; });
-      var valor = c.valores.a;
+    } else {
+      /* Gastos por categoría: gastos=Otros, impuestos, sueldos, proveedores */
+      var categoriaMap = {
+        "gastos": "Otros",
+        "impuestos": "Impuestos",
+        "sueldos": "Sueldos",
+        "proveedores": "Proveedores"
+      };
+      var categoria = categoriaMap[campo] || "Otros";
+
+      var gs = gastos.filter(function (x) {
+        return !x.anulada && x.fecha === fecha && x.categoria === categoria;
+      });
       if (gs.length === 1) {
-        gs[0].monto = valor;
-        guardarGastosLocales();
-      } else if (gs.length === 0) {
-        guardarGasto({ fecha: fecha, monto: valor, concepto: "Gastos " + fecha + " (desde Excel)", categoria: "Otros" });
+        editarGasto(gs[0].id, { monto: valor });
+      } else if (gs.length === 0 && valor > 0) {
+        guardarGasto({ fecha: fecha, monto: valor, concepto: categoria + " " + fecha, categoria: categoria });
+      } else if (gs.length > 1) {
+        editarGasto(gs[0].id, { monto: valor });
       }
     }
+
+    pintarVentas();
+    pintarGastos();
+    pintarBalance();
   }
 
   function decidir(i, decision) {
