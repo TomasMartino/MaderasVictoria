@@ -28,6 +28,24 @@
   var suscripcionGastos = null;
   var appIniciada = false;
 
+  /* Cada dispositivo trabaja en su propio documento de presupuesto.
+   * Así 3 personas pueden usar la app al mismo tiempo sin pisarse. */
+  var presupuestoActivo = null;
+  var CLAVE_PRESUPUESTO_ACTIVO = "tiovity.presupuesto-activo";
+
+  function presupuestoActivoId() {
+    if (presupuestoActivo) return presupuestoActivo;
+    var guardado = null;
+    try { guardado = localStorage.getItem(CLAVE_PRESUPUESTO_ACTIVO); } catch (e) {}
+    if (guardado) {
+      presupuestoActivo = guardado;
+      return presupuestoActivo;
+    }
+    presupuestoActivo = "pres_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+    try { localStorage.setItem(CLAVE_PRESUPUESTO_ACTIVO, presupuestoActivo); } catch (e) {}
+    return presupuestoActivo;
+  }
+
   var $ = function (sel, ctx) { return (ctx || document).querySelector(sel); };
 
   var elLineas = $("#lineas");
@@ -931,7 +949,7 @@
   function guardarEnFirestore() {
     if (!usaFirebase || !usuarioActual || ignorandoFirestore) return;
     try {
-      db.collection("presupuestos").doc("compartido").set({
+      db.collection("presupuestos").doc(presupuestoActivoId()).set({
         cliente: estado.cliente,
         direccion: estado.direccion,
         telefono: estado.telefono,
@@ -948,7 +966,7 @@
   function escucharPresupuesto() {
     if (!usaFirebase || !usuarioActual || escuchandoPresupuesto) return;
     escuchandoPresupuesto = true;
-    suscripcionPresupuesto = db.collection("presupuestos").doc("compartido").onSnapshot(function (doc) {
+    suscripcionPresupuesto = db.collection("presupuestos").doc(presupuestoActivoId()).onSnapshot(function (doc) {
       if (!doc.exists) return;
       var d = doc.data() || {};
       ignorandoFirestore = true;
@@ -1014,6 +1032,16 @@
 
   function nuevo() {
     if (!confirm("¿Empezar un presupuesto nuevo? Se borra el actual de este equipo.")) return;
+    /* Nuevo documento de presupuesto para no pisar a los otros dispositivos */
+    presupuestoActivo = "pres_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+    try {
+      localStorage.setItem(CLAVE_PRESUPUESTO_ACTIVO, presupuestoActivo);
+    } catch (e) {}
+    if (usaFirebase && usuarioActual) {
+      cerrarSuscripciones();
+      escucharPresupuesto();
+      escucharVentasYGastos();
+    }
     estado.cliente = "";
     estado.direccion = "";
     estado.telefono = "";
@@ -2554,6 +2582,7 @@
   /* ---------- arranque ---------- */
 
   function iniciarApp() {
+    presupuestoActivoId();
     var cambios = cargarCatalogo();
 
     var habia = cargar();
@@ -2607,6 +2636,18 @@
     }
 
     if (habia) avisar("Se recuperó el presupuesto de este equipo");
+
+    /* Muestra qué documento de presupuesto está usando este dispositivo */
+    var badge = $("#presupuesto-badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.id = "presupuesto-badge";
+      badge.style.cssText = "font-size:11px;color:var(--tinta-2);margin-left:10px;border:1px solid var(--tinta-2);padding:2px 6px;border-radius:4px;display:inline-block;vertical-align:middle;";
+      var head = $(".print-head__datos");
+      if (head) head.appendChild(badge);
+    }
+    badge.textContent = "Presupuesto · " + presupuestoActivoId().replace("pres_", "");
+
     mostrarVista("presupuesto");
   }
 
