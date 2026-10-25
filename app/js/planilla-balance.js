@@ -31,7 +31,7 @@
     (fila || []).forEach(function (c, i) {
       var t = PRODUCTOS.sinAcentos(String(c === null ? "" : c).toLowerCase()).trim();
       if (t.indexOf("d\u00eda") !== -1 || t === "dia") mapa.fecha = i;
-      else if (t === "ventas") mapa.ventas = i;
+      else if (t === "ventas" || t === "venta" || t.indexOf("total ventas") !== -1 || t.indexOf("ingresos") !== -1) mapa.ventas = i;
       else if (t === "gastos") mapa.gastos = i;
       else if (t.indexOf("impuesto") !== -1) mapa.impuestos = i;
       else if (t.indexOf("sueldo") !== -1) mapa.sueldos = i;
