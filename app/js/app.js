@@ -353,33 +353,39 @@
     var segunda = window.confirm("Confirmación final: no se puede deshacer. ¿Reiniciar desde cero?");
     if (!segunda) return;
 
+    var promesas = [];
     if (usaFirebase && usuarioActual) {
-      db.collection("ventas").get().then(function (snap) {
-        var batch = db.batch();
-        snap.forEach(function (doc) { batch.delete(doc.ref); });
-        return batch.commit();
-      }).catch(function () {});
-      db.collection("gastos").get().then(function (snap) {
-        var batch = db.batch();
-        snap.forEach(function (doc) { batch.delete(doc.ref); });
-        return batch.commit();
-      }).catch(function () {});
-      /* El onSnapshot refresca la vista cuando la nube termina de borrar. */
+      promesas.push(
+        db.collection("ventas").get().then(function (snap) {
+          var batch = db.batch();
+          snap.forEach(function (doc) { batch.delete(doc.ref); });
+          return batch.commit();
+        }).catch(function () {})
+      );
+      promesas.push(
+        db.collection("gastos").get().then(function (snap) {
+          var batch = db.batch();
+          snap.forEach(function (doc) { batch.delete(doc.ref); });
+          return batch.commit();
+        }).catch(function () {})
+      );
     }
 
-    ventas = []; gastos = [];
-    try {
-      localStorage.removeItem("tiovity.ventas.v1");
-      localStorage.removeItem("tiovity.gastos.v1");
-      localStorage.removeItem("tiovity.productos.v1");
-      localStorage.removeItem("tiovity.presupuesto.v1");
-    } catch (e) {}
+    Promise.all(promesas).then(function () {
+      ventas = []; gastos = [];
+      try {
+        localStorage.removeItem("tiovity.ventas.v1");
+        localStorage.removeItem("tiovity.gastos.v1");
+        localStorage.removeItem("tiovity.productos.v1");
+        localStorage.removeItem("tiovity.presupuesto.v1");
+      } catch (e) {}
 
-    catalogo = [];
-    crearMotor();
-    refrescarSelects();
+      catalogo = [];
+      crearMotor();
+      refrescarSelects();
 
-    location.reload();
+      location.reload();
+    });
   }
 
   /* Escucha cambios en ventas y gastos en tiempo real. Solo una vez por sesión. */
