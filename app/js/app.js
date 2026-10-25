@@ -2610,6 +2610,17 @@
     mostrarVista("presupuesto");
   }
 
+  /* 24 horas en milisegundos. Pasado este tiempo desde el último login, la
+   * sesión se considera expirada y hay que volverse a loguear. */
+  var SESION_EXPIRACION_MS = 24 * 60 * 60 * 1000;
+  var CLAVE_SESION_INICIO = "tiovity.sesion-inicio";
+
+  function sesionValida() {
+    var inicio = localStorage.getItem(CLAVE_SESION_INICIO);
+    if (!inicio) return false;
+    return Date.now() - Number(inicio) < SESION_EXPIRACION_MS;
+  }
+
   function iniciar() {
     if (usaFirebase) {
       /* Si ya hay sesión guardada (sobrevive al reinicio de la PC), entrar
@@ -2618,11 +2629,31 @@
        * logout desde otra pestaña. */
       var user = auth.currentUser;
       if (user) {
+        if (!sesionValida()) {
+          /* Sesión expirada por tiempo: cierra la sesión de Firebase y
+           * obliga a volver a loguearse. */
+          auth.signOut().catch(function () {});
+          localStorage.removeItem(CLAVE_SESION_INICIO);
+          usuarioActual = null;
+          cerrarSuscripciones();
+          mostrarLogin();
+          avisar("Tu sesión expiró (pasaron más de 24 horas). Volvé a ingresar.");
+          return;
+        }
         entrarConSesion(user);
       } else {
         mostrarLogin();
         auth.onAuthStateChanged(function (user) {
           if (user) {
+            if (!sesionValida()) {
+              auth.signOut().catch(function () {});
+              localStorage.removeItem(CLAVE_SESION_INICIO);
+              usuarioActual = null;
+              cerrarSuscripciones();
+              mostrarLogin();
+              avisar("Tu sesión expiró (pasaron más de 24 horas). Volvé a ingresar.");
+              return;
+            }
             entrarConSesion(user);
           } else {
             usuarioActual = null;
@@ -2658,7 +2689,9 @@
     btn.hidden = !usuarioActual;
     btn.addEventListener("click", function () {
       if (!usuarioActual) return;
-      auth.signOut().catch(function (err) {
+      auth.signOut().then(function () {
+        localStorage.removeItem(CLAVE_SESION_INICIO);
+      }).catch(function (err) {
         avisar("No se pudo cerrar sesión: " + (err.message || ""));
       });
     });
@@ -2691,6 +2724,10 @@
        * en la página (ocurre con file://), entramos por acá igual.
        * entrarConSesion es idempotente, así que no hay arranque doble. */
       entrarConSesion(cred.user);
+      /* Marca el momento del login para la expiración de 24 horas. */
+      try {
+        localStorage.setItem(CLAVE_SESION_INICIO, String(Date.now()));
+      } catch (e) {}
       if (btn) {
         btn.dataset.enviando = "0";
         btn.disabled = false;
