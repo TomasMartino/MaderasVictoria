@@ -344,48 +344,73 @@
   /* Borra TODAS las ventas y gastos activos (pide confirmación doble).
    * Es la única excepción a la regla de "no se borra": el tío pidió poder
    * empezar de cero. EnFirebase borra también los documentos de la nube. */
-  /* Borra TODO para arrancar desde cero: ventas y gastos de Firebase,
-   * y productos, presupuesto y ventas/gastos del localStorage.
+  /* Borra datos según la opción elegida:
+   * - "todo": ventas, gastos, productos, presupuesto (local y Firebase)
+   * - "solo-ventas": solo ventas (local y Firebase), no toca gastos ni balance
    * Recarga la página al terminar para que todo empiece limpio. */
-  function limpiarTodo() {
-    var primera = window.confirm("Esto borra TODO: ventas, gastos, productos y presupuesto de este dispositivo, y ventas/gastos de Firebase (la nube). ¿Seguro que querés continuar?");
+  function borrarDatos(opcion) {
+    var mensajeTodo = "Esto borra TODO: ventas, gastos, productos y presupuesto de este dispositivo, y ventas/gastos de Firebase (la nube). ¿Seguro que querés continuar?";
+    var mensajeSoloVentas = "Esto borra solo las ventas diarias (local y Firebase). Los gastos y el balance no se tocan. ¿Seguro que querés continuar?";
+    var mensaje = (opcion === "solo-ventas") ? mensajeSoloVentas : mensajeTodo;
+
+    var primera = window.confirm(mensaje);
     if (!primera) return;
-    var segunda = window.confirm("Confirmación final: no se puede deshacer. ¿Reiniciar desde cero?");
+    var segunda = window.confirm("Confirmación final: no se puede deshacer. ¿Borrar ahora?");
     if (!segunda) return;
+
+    var borrarVentas = (opcion === "todo" || opcion === "solo-ventas");
+    var borrarGastos = (opcion === "todo" || opcion === "solo-gastos");
+    var borrarProductos = (opcion === "todo");
+    var borrarPresupuesto = (opcion === "todo");
 
     var promesas = [];
     if (usaFirebase && usuarioActual) {
-      promesas.push(
-        db.collection("ventas").get().then(function (snap) {
-          var batch = db.batch();
-          snap.forEach(function (doc) { batch.delete(doc.ref); });
-          return batch.commit();
-        }).catch(function () {})
-      );
-      promesas.push(
-        db.collection("gastos").get().then(function (snap) {
-          var batch = db.batch();
-          snap.forEach(function (doc) { batch.delete(doc.ref); });
-          return batch.commit();
-        }).catch(function () {})
-      );
+      if (borrarVentas) {
+        promesas.push(
+          db.collection("ventas").get().then(function (snap) {
+            var batch = db.batch();
+            snap.forEach(function (doc) { batch.delete(doc.ref); });
+            return batch.commit();
+          }).catch(function () {})
+        );
+      }
+      if (borrarGastos) {
+        promesas.push(
+          db.collection("gastos").get().then(function (snap) {
+            var batch = db.batch();
+            snap.forEach(function (doc) { batch.delete(doc.ref); });
+            return batch.commit();
+          }).catch(function () {})
+        );
+      }
     }
 
     Promise.all(promesas).then(function () {
-      ventas = []; gastos = [];
+      if (borrarVentas) ventas = [];
+      if (borrarGastos) gastos = [];
       try {
-        localStorage.removeItem("tiovity.ventas.v1");
-        localStorage.removeItem("tiovity.gastos.v1");
-        localStorage.removeItem("tiovity.productos.v1");
-        localStorage.removeItem("tiovity.presupuesto.v1");
+        if (borrarVentas) localStorage.removeItem("tiovity.ventas.v1");
+        if (borrarGastos) localStorage.removeItem("tiovity.gastos.v1");
+        if (borrarProductos) localStorage.removeItem("tiovity.productos.v1");
+        if (borrarPresupuesto) localStorage.removeItem("tiovity.presupuesto.v1");
       } catch (e) {}
 
-      catalogo = [];
-      crearMotor();
-      refrescarSelects();
+      if (borrarProductos) {
+        catalogo = [];
+        crearMotor();
+        refrescarSelects();
+      }
 
+      pintarVentas();
+      pintarGastos();
+      pintarBalance();
       location.reload();
     });
+  }
+
+  /* Mantiene compatibilidad: "Reiniciar desde cero" = borrar todo. */
+  function limpiarTodo() {
+    borrarDatos("todo");
   }
 
   /* Escucha cambios en ventas y gastos en tiempo real. Solo una vez por sesión. */
@@ -1059,6 +1084,7 @@
   var elBalanceSemana = $("#balance-semana");
   var elBalanceQuitar = $("#balance-quitar");
   var elBalanceExportar = $("#balance-exportar");
+  var elBalanceBorrar = $("#balance-borrar");
   var elBalanceAplicar = $("#balance-aplicar");
   var elEditarBalance = $("#modal-editar-balance");
   var elEditarBalanceFecha = $("#editar-balance-fecha");
@@ -1685,7 +1711,12 @@
     } else {
       var acc = registrosVacios();
       var anterior = null;
-      mov.fechas.forEach(function (f) {
+      var desdeP = desde.split("-");
+      var hastaP = hasta.split("-");
+      var d = new Date(Number(desdeP[0]), Number(desdeP[1]) - 1, Number(desdeP[2]));
+      var fin = new Date(Number(hastaP[0]), Number(hastaP[1]) - 1, Number(hastaP[2]));
+      while (d <= fin) {
+        var f = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
         var fila = filaDiaBalance(f, mov);
         if (anterior !== null && lunesISO(f) !== lunesISO(anterior)) {
           lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
@@ -1695,7 +1726,8 @@
         sumarFilaEn(acc, fila);
         sumarFilaEn(accTotal, fila);
         anterior = f;
-      });
+        d.setDate(d.getDate() + 1);
+      }
       if (anterior !== null) {
         lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
       }
@@ -2256,8 +2288,19 @@
       elVentaFecha.focus();
     });
 
-    $("#ventas-limpiar").addEventListener("click", function () {
-      limpiarTodo();
+    var elVentasBorrarOpcion = $("#ventas-borrar-opcion");
+    var elVentasBorrar = $("#ventas-borrar");
+
+    elVentasBorrarOpcion.addEventListener("change", function () {
+      elVentasBorrar.style.display = elVentasBorrarOpcion.value ? "inline-block" : "none";
+    });
+
+    elVentasBorrar.addEventListener("click", function () {
+      var opcion = elVentasBorrarOpcion.value;
+      if (!opcion) return;
+      borrarDatos(opcion);
+      elVentasBorrarOpcion.value = "";
+      elVentasBorrar.style.display = "none";
     });
 
     elVentaCancelar.addEventListener("click", function () {
@@ -2376,6 +2419,10 @@
       exportarBalance(r.desde, r.hasta);
     });
 
+    elBalanceBorrar.addEventListener("click", function () {
+      borrarDatos("solo-gastos");
+    });
+
     /* ---------- editar fila de balance (lapicito) ---------- */
     elBalanceTabla.addEventListener("click", function (ev) {
       var btn = ev.target.closest(".btn-editar-balance");
@@ -2383,8 +2430,6 @@
       var fecha = btn.dataset.fecha;
       if (!fecha) return;
       var mov = recolectarMovimientos(rangoDeSeleccion().desde, rangoDeSeleccion().hasta);
-      var f = mov.ventasPorFecha[fecha] !== undefined || mov.gastosPorFecha[fecha] !== undefined;
-      if (!f) return;
       var dia = filaDiaBalance(fecha, mov);
       elEditarBalanceFecha.value = fecha;
       elEditarBalanceFechaTexto.textContent = fecha + " · " + dia.etiqueta;

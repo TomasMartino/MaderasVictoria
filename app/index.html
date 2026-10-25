@@ -230,7 +230,15 @@
               <p class="prod-resumen" id="ventas-resumen"></p>
             </div>
             <div class="prod-head__acciones">
-              <button id="ventas-limpiar" class="btn btn--peligro" type="button">Reiniciar desde cero</button>
+              <label class="campo" style="margin:0;">
+                <span class="campo__label" style="font-size:12px;">Borrar ventas:</span>
+                <select id="ventas-borrar-opcion" class="campo__input" style="font-size:12px;padding:4px 8px;">
+                  <option value="">-- elegir --</option>
+                  <option value="todo">Borrar todo (ventas y gastos)</option>
+                  <option value="solo-ventas">Borrar solo ventas diarias (sin afectar balance)</option>
+                </select>
+              </label>
+              <button id="ventas-borrar" class="btn btn--peligro" type="button" style="display:none;">Borrar</button>
               <button id="ventas-nueva" class="btn btn--brand" type="button">+ Nueva venta</button>
               <button id="ventas-comparar" class="btn btn--brand" type="button">Comparar con Excel</button>
               <input id="ventas-excel" type="file" accept=".xlsx,.xls" hidden>
@@ -307,6 +315,7 @@
               <button id="balance-exportar" class="btn btn--ghost" type="button" hidden>Exportar Excel</button>
               <button id="balance-comparar" class="btn btn--brand" type="button">Comparar con Excel</button>
               <input id="balance-excel" type="file" accept=".xlsx,.xls" hidden>
+              <button id="balance-borrar" class="btn btn--peligro" type="button">Borrar balance (gastos)</button>
               <button id="gasto-nuevo" class="btn btn--brand" type="button">+ Agregar gasto</button>
             </div>
           </header>
