@@ -26,6 +26,8 @@
   var suscripcionPresupuesto = null;
   var suscripcionVentas = null;
   var suscripcionGastos = null;
+  var escuchandoCatalogo = false;
+  var suscripcionCatalogo = null;
   var appIniciada = false;
 
   /* Cada dispositivo trabaja en su propio documento de presupuesto.
@@ -90,6 +92,41 @@
     } catch (e) {
       /* sin almacenamiento la app sigue funcionando, solo no recuerda */
     }
+    guardarCatalogoAFirestore();
+  }
+
+  /* Sube el catálogo a Firebase para que los otros dispositivos lo vean.
+   * Último en escribir gana (suficiente para 3 personas). */
+  function guardarCatalogoAFirestore() {
+    if (!usaFirebase || !usuarioActual) return;
+    try {
+      db.collection("config").doc("catalogo").set({
+        productos: catalogo,
+        actualizado: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* Escucha cambios de catálogo en la nube y los trae a este equipo. */
+  function escucharCatalogo() {
+    if (!usaFirebase || !usuarioActual || escuchandoCatalogo) return;
+    escuchandoCatalogo = true;
+    suscripcionCatalogo = db.collection("config").doc("catalogo").onSnapshot(function (doc) {
+      if (!doc.exists) return;
+      var d = doc.data() || {};
+      if (!d.productos || !Array.isArray(d.productos)) return;
+      var r = PRODUCTOS.fusionar(CAT.productos, d.productos);
+      catalogo = r.productos;
+      crearMotor();
+      refrescarSelects();
+      pintarProductos();
+      /* También lo dejamos en localStorage para offline */
+      try {
+        localStorage.setItem(CLAVE_PRODUCTOS, JSON.stringify({ version: 1, productos: catalogo }));
+      } catch (e) {}
+    }, function (err) {
+      /* silencioso: si falla la red, seguimos con lo local */
+    });
   }
 
   /* Devuelve los cambios que trajo la planilla, o null si no hubo nada. */
@@ -480,8 +517,10 @@
     if (suscripcionPresupuesto) { suscripcionPresupuesto(); suscripcionPresupuesto = null; }
     if (suscripcionVentas) { suscripcionVentas(); suscripcionVentas = null; }
     if (suscripcionGastos) { suscripcionGastos(); suscripcionGastos = null; }
+    if (suscripcionCatalogo) { suscripcionCatalogo(); suscripcionCatalogo = null; }
     escuchandoPresupuesto = false;
     escuchandoVentasGastos = false;
+    escuchandoCatalogo = false;
   }
 
   /* Calcula el balance en un rango de fechas: ventas suman, gastos restan. */
@@ -659,7 +698,8 @@
       guardarEnFirestore();
     };
     if (ahora) escribir();
-    else guardarTimer = setTimeout(escribir, 30000);
+    /* Auto-guardado tras 2 minutos de inactividad (120.000 ms). */
+    else guardarTimer = setTimeout(escribir, 120000);
   }
 
   function cargar() {
@@ -2728,6 +2768,7 @@
      * quedan sincronizadas igual. Los flags evitan duplicados. */
     escucharPresupuesto();
     escucharVentasYGastos();
+    escucharCatalogo();
     if (!appIniciada) {
       appIniciada = true;
       iniciarApp();
