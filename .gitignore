@@ -24,3 +24,6 @@ coverage/
 # Temporales
 *.tmp
 *.bak
+
+# Artefactos de agentes/AI
+.atl/
