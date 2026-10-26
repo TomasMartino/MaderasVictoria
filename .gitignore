@@ -1,10 +1,26 @@
-# Basura de Office (archivos de bloqueo cuando el Excel queda abierto)
-~$*
-*.tmp
-
-# Sistema
-Thumbs.db
-desktop.ini
+# Archivos locales del navegador / sistema
 .DS_Store
-.atl/
+Thumbs.db
 
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Credenciales y secretos locales (no subir claves de Firebase en repos públicos)
+.env
+.env.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Resultados de pruebas / cobertura
+coverage/
+*.lcov
+
+# Temporales
+*.tmp
+*.bak
