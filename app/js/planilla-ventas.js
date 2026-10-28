@@ -134,5 +134,63 @@
     return { cambios: cambios, ignoradas: ignoradas, sinEncabezado: sinEncabezado };
   }
 
-  root.TV_PLANILLA_VENTAS = { revisar: revisar };
+  /* Ventas repetidas: misma fecha, mismo detalle, mismo monto y mismo medio.
+   * Devuelve solo los grupos con mas de una, con la primera como la que se
+   * queda. Sirve para reparar importaciones repetidas. */
+  function duplicadas(lista) {
+    var grupos = {};
+    var orden = [];
+    (lista || []).forEach(function (v) {
+      if (!v || v.anulada) return;
+      var detalle = PRODUCTOS.clave(v.detalle || "");
+      /* El total del día que crea la importación del balance ("Ventas
+       * <fecha>") tiene que existir UNA sola vez por fecha, aunque el monto
+       * haya quedado distinto en cada intento. */
+      var esTotalDelDia = detalle === PRODUCTOS.clave("Ventas " + v.fecha);
+      var montoClave = esTotalDelDia
+        ? "*"
+        : typeof v.monto === "number" ? v.monto : Number(v.monto) || 0;
+      var clave = [
+        v.fecha,
+        detalle,
+        montoClave,
+        PRODUCTOS.sinAcentos(String(v.medioPago || "").toLowerCase()),
+      ].join("|");
+      if (!grupos[clave]) {
+        grupos[clave] = [];
+        orden.push(clave);
+      }
+      grupos[clave].push(v);
+    });
+    return orden
+      .filter(function (k) { return grupos[k].length > 1; })
+      .map(function (k) { return { clave: k, ventas: grupos[k] }; });
+  }
+
+  /* Mismo criterio para gastos: la importación del balance crea un gasto
+   * por categoría y día ("Otros 2026-10-27"), que debe existir una sola vez. */
+  function duplicadasGastos(lista) {
+    var grupos = {};
+    var orden = [];
+    (lista || []).forEach(function (g) {
+      if (!g || g.anulada) return;
+      var concepto = PRODUCTOS.clave(g.concepto || "");
+      var categoria = PRODUCTOS.sinAcentos(String(g.categoria || "").toLowerCase());
+      var esTotalDelDia = concepto === PRODUCTOS.clave(String(g.categoria || "") + " " + g.fecha);
+      var montoClave = esTotalDelDia
+        ? "*"
+        : typeof g.monto === "number" ? g.monto : Number(g.monto) || 0;
+      var clave = [g.fecha, categoria, concepto, montoClave].join("|");
+      if (!grupos[clave]) {
+        grupos[clave] = [];
+        orden.push(clave);
+      }
+      grupos[clave].push(g);
+    });
+    return orden
+      .filter(function (k) { return grupos[k].length > 1; })
+      .map(function (k) { return { clave: k, gastos: grupos[k] }; });
+  }
+
+  root.TV_PLANILLA_VENTAS = { revisar: revisar, duplicadas: duplicadas, duplicadasGastos: duplicadasGastos };
 })(typeof window !== "undefined" ? window : globalThis);

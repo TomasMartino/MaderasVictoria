@@ -195,6 +195,17 @@
         uid: usuarioActual.uid,
         creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
         anulada: false,
+      }).then(function (ref) {
+        /* Se muestra YA, sin esperar al snapshot. Si la nube tarda y el
+         * usuario cree que no se guardó, vuelve a cargar y duplica todo. */
+        venta.id = ref.id;
+        venta.anulada = false;
+        if (!ventas.some(function (x) { return x.id === ref.id; })) {
+          ventas.push(venta);
+          guardarVentasLocales();
+          pintarVentas();
+          pintarBalance();
+        }
       }).catch(function (err) {
         /* Si la subida a la nube falla, al menos la venta queda visible acá */
         ventas.push(venta);
@@ -226,6 +237,15 @@
         uid: usuarioActual.uid,
         creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
         anulada: false,
+      }).then(function (ref) {
+        gasto.id = ref.id;
+        gasto.anulada = false;
+        if (!gastos.some(function (x) { return x.id === ref.id; })) {
+          gastos.push(gasto);
+          guardarGastosLocales();
+          pintarGastos();
+          pintarBalance();
+        }
       }).catch(function (err) {
         gastos.push(gasto);
         guardarGastosLocales();
@@ -296,12 +316,17 @@
     var vdias = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
     var ventasActual = vdias.reduce(function (s, v) { return s + (typeof v.monto === "number" ? v.monto : 0); }, 0);
     var ventasNuevo = typeof valores.ventas === "number" ? valores.ventas : 0;
-    if (vdias.length === 1) {
-      editarVenta(vdias[0].id, { monto: ventasNuevo });
-    } else if (vdias.length === 0 && ventasNuevo > 0) {
-      guardarVenta({ fecha: fecha, monto: ventasNuevo, medioPago: "Efectivo", detalle: "Ventas " + fecha });
-    } else if (vdias.length > 1) {
-      editarVenta(vdias[0].id, { monto: ventasNuevo });
+    if (vdias.length === 0) {
+      if (ventasNuevo > 0) {
+        guardarVenta({ fecha: fecha, monto: ventasNuevo, medioPago: "Efectivo", detalle: "Ventas " + fecha });
+      }
+    } else {
+      var nuevoV = montoParaLlegarAlTotal(vdias, ventasNuevo);
+      if (nuevoV === null) {
+        avisar("Ventas del " + fecha + ": lo cargado ya suma más que el total que pusiste");
+      } else {
+        editarVenta(vdias[0].id, { monto: nuevoV });
+      }
     }
 
     /* --- Gastos por categoría --- */
@@ -317,12 +342,17 @@
       });
     var actual = gdias.reduce(function (s, g) { return s + (typeof g.monto === "number" ? g.monto : 0); }, 0);
     var nuevo = typeof valores[cat.campo] === "number" ? valores[cat.campo] : 0;
-    if (gdias.length === 1) {
-      editarGasto(gdias[0].id, { monto: nuevo });
-    } else if (gdias.length === 0 && nuevo > 0) {
-      guardarGasto({ fecha: fecha, monto: nuevo, concepto: cat.categoria + " " + fecha, categoria: cat.categoria });
-    } else if (gdias.length > 1) {
-      editarGasto(gdias[0].id, { monto: nuevo });
+    if (gdias.length === 0) {
+      if (nuevo > 0) {
+        guardarGasto({ fecha: fecha, monto: nuevo, concepto: cat.categoria + " " + fecha, categoria: cat.categoria });
+      }
+    } else {
+      var nuevoG = montoParaLlegarAlTotal(gdias, nuevo);
+      if (nuevoG === null) {
+        avisar(cat.categoria + " del " + fecha + ": lo cargado ya suma más que el total que pusiste");
+      } else {
+        editarGasto(gdias[0].id, { monto: nuevoG });
+      }
     }
     });
 
@@ -330,6 +360,85 @@
     pintarGastos();
     pintarBalance();
     avisar("Fila del balance actualizada");
+  }
+
+  /* Repara las importaciones repetidas: anula las ventas y gastos idénticos
+   * que sobraron (misma fecha, detalle/concepto, monto y medio/categoría).
+   * No borra nada. */
+  function revisarDuplicados() {
+    var gruposV = TV_PLANILLA_VENTAS.duplicadas(ventas);
+    var gruposG = TV_PLANILLA_VENTAS.duplicadasGastos(gastos);
+
+    if (!gruposV.length && !gruposG.length) {
+      avisar("No hay ventas ni gastos duplicados");
+      return;
+    }
+
+    var sobran = 0;
+    var monto = 0;
+    gruposV.forEach(function (g) {
+      var repetidas = g.ventas.length - 1;
+      sobran += repetidas;
+      monto += (Number(g.ventas[0].monto) || 0) * repetidas;
+    });
+    gruposG.forEach(function (g) {
+      var repetidos = g.gastos.length - 1;
+      sobran += repetidos;
+      monto += (Number(g.gastos[0].monto) || 0) * repetidos;
+    });
+
+    function listar(grupos, campo, texto) {
+      return grupos.slice(0, 6).map(function (g) {
+        var r = g[campo][0];
+        return "· " + r.fecha + " — " + (r[texto] || "sin detalle") + " — " +
+          TV.pesos(r.monto) + " (" + g[campo].length + " veces)";
+      }).join("\n");
+    }
+
+    var lineas = [];
+    if (gruposV.length) {
+      lineas.push("VENTAS (" + gruposV.length + " grupos):");
+      lineas.push(listar(gruposV, "ventas", "detalle"));
+    }
+    if (gruposG.length) {
+      lineas.push("GASTOS (" + gruposG.length + " grupos):");
+      lineas.push(listar(gruposG, "gastos", "concepto"));
+    }
+
+    if (!confirm(
+      "Hay registros repetidos por haber importado el Excel más de una vez.\n\n" +
+      lineas.join("\n") + "\n\nSe van a ANULAR " + sobran + " repetidos (" +
+      TV.pesos(monto) + "). De cada grupo queda uno. No se borra nada.\n\n¿Continuar?"
+    )) return;
+    if (!confirm("Última confirmación: " + sobran + " registros quedan anulados. ¿Seguir?")) return;
+
+    gruposV.forEach(function (g) {
+      for (var i = 1; i < g.ventas.length; i++) {
+        var v = g.ventas[i];
+        anularVenta(v.id, "Duplicada por importación");
+        var local = ventas.find(function (x) { return x.id === v.id; });
+        if (local) {
+          local.anulada = true;
+          local.motivoAnulacion = "Duplicada por importación";
+        }
+      }
+    });
+    gruposG.forEach(function (g) {
+      for (var i = 1; i < g.gastos.length; i++) {
+        var ga = g.gastos[i];
+        anularGasto(ga.id, "Duplicado por importación");
+        var localG = gastos.find(function (x) { return x.id === ga.id; });
+        if (localG) {
+          localG.anulada = true;
+          localG.motivoAnulacion = "Duplicado por importación";
+        }
+      }
+    });
+
+    pintarVentas();
+    pintarGastos();
+    pintarBalance();
+    avisar("Se anularon " + sobran + " registros duplicados");
   }
 
   /* Anula una venta: la marca como anulada con motivo. No se borra. */
@@ -1426,21 +1535,37 @@
     pintarProductos();
   }
 
-  /* Ajusta una sola venta/gasto del día para que coincida con el Excel.
-   * Si hay exactamente uno, lo edita. Si no hay ninguno, lo crea. Si hay
-   * varios, no toca nada (no se sabe cuál corregir). */
+  /* Deja la SUMA del grupo exactamente en `objetivo` ajustando el primer
+   * registro, sin borrar ni anular nada. Devuelve el monto a poner, o null
+   * si los demás registros ya suman más que el objetivo (ahí no se puede
+   * sin limpiar duplicados primero). */
+  function montoParaLlegarAlTotal(lista, objetivo) {
+    var otros = 0;
+    for (var i = 1; i < lista.length; i++) otros += Number(lista[i].monto) || 0;
+    var nuevo = Math.round((objetivo - otros) * 100) / 100;
+    return nuevo < 0 ? null : nuevo;
+  }
+
+  /* Ajusta el día para que el TOTAL coincida con el Excel. Si no hay
+   * registros, crea uno. Si hay varios, la suma manda: antes se editaba
+   * solo el primero y el resto quedaba sumando (5 + 5 = 10 para siempre). */
   function aplicarBalanceCampo(c, campo) {
     var fecha = c.fecha;
     var valor = typeof c.valores.a === "number" ? c.valores.a : 0;
 
     if (campo === "ventas") {
       var vs = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
-      if (vs.length === 1) {
-        editarVenta(vs[0].id, { monto: valor });
-      } else if (vs.length === 0 && valor > 0) {
-        guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha });
-      } else if (vs.length > 1) {
-        editarVenta(vs[0].id, { monto: valor });
+      if (vs.length === 0) {
+        if (valor > 0) {
+          guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha });
+        }
+      } else {
+        var nuevoV = montoParaLlegarAlTotal(vs, valor);
+        if (nuevoV === null) {
+          avisar("Ventas del " + fecha + ": lo cargado ya suma más que el Excel. Revisá duplicados.");
+        } else {
+          editarVenta(vs[0].id, { monto: nuevoV });
+        }
       }
     } else {
       /* Gastos por categoría: gastos=Otros, impuestos, sueldos, proveedores */
@@ -1455,12 +1580,17 @@
       var gs = gastos.filter(function (x) {
         return !x.anulada && x.fecha === fecha && x.categoria === categoria;
       });
-      if (gs.length === 1) {
-        editarGasto(gs[0].id, { monto: valor });
-      } else if (gs.length === 0 && valor > 0) {
-        guardarGasto({ fecha: fecha, monto: valor, concepto: categoria + " " + fecha, categoria: categoria });
-      } else if (gs.length > 1) {
-        editarGasto(gs[0].id, { monto: valor });
+      if (gs.length === 0) {
+        if (valor > 0) {
+          guardarGasto({ fecha: fecha, monto: valor, concepto: categoria + " " + fecha, categoria: categoria });
+        }
+      } else {
+        var nuevoG = montoParaLlegarAlTotal(gs, valor);
+        if (nuevoG === null) {
+          avisar(categoria + " del " + fecha + ": lo cargado ya suma más que el Excel. Revisá duplicados.");
+        } else {
+          editarGasto(gs[0].id, { monto: nuevoG });
+        }
       }
     }
 
@@ -2271,6 +2401,15 @@
     elVentasExcelInput.addEventListener("change", function () {
       abrirExcel(this.files && this.files[0], "ventas");
     });
+
+    var btnDuplicadas = $("#ventas-duplicadas");
+    if (btnDuplicadas) {
+      btnDuplicadas.addEventListener("click", revisarDuplicados);
+    }
+    var btnDuplicadasBalance = $("#balance-duplicadas");
+    if (btnDuplicadasBalance) {
+      btnDuplicadasBalance.addEventListener("click", revisarDuplicados);
+    }
 
     $("#balance-comparar").addEventListener("click", function () {
       elBalanceExcelInput.value = "";
