@@ -103,22 +103,21 @@ html, body {
   align-items: end;
   /* Mismas columnas y gap que .linea (más abajo). Si se cambia una,
    * hay que cambiar la otra o el encabezado queda corrido.
-   * 1fr = 1mm: 169mm útiles (A4 184mm - 6 gaps de 2,5mm). */
-  grid-template-columns: 6fr 62fr 17fr 20fr 20fr 21fr 23fr;
+   * 1fr = 1mm: 169mm útiles (A4 184mm - 5 gaps de 2,5mm).
+   * 6 columnas: # / Producto / Cantidad / Largo real / Precio / Total.
+   * "A pedir" no se imprime: va solo en pantalla. */
+  grid-template-columns: 6fr 66fr 18fr 24fr 25fr 30fr;
   gap: 2.5mm;
 }
 
-.lineas__head .c-pedir { display: block; }
-
 /* Los números se imprimen alineados a la derecha: el encabezado lo acompaña. */
 .lineas__head .c-cant,
-.lineas__head .c-largo,
-.lineas__head .c-pedir { text-align: right; }
+.lineas__head .c-largo { text-align: right; }
 
 .linea {
   /* proporciones en fr: nunca se desbordan del margen aunque cambie el papel.
    * Tiene que ser la MISMA grilla que .lineas__head. */
-  grid-template-columns: 6fr 62fr 17fr 20fr 20fr 21fr 23fr;
+  grid-template-columns: 6fr 66fr 18fr 24fr 25fr 30fr;
   gap: 2.5mm;
   padding: 2.2mm 0;
   border-top: 0;
@@ -152,17 +151,11 @@ html, body {
   color: #2B2118;
 }
 
-.linea .pedir-print {
-  display: block;
-  align-self: center;
-  text-align: right;
-  font-size: 10pt;
-  color: #2B2118;
-}
+.linea .pedir-print { display: none; }
 
 .linea .f--largo { min-height: 0; }
 
-/* el "se pide ..." de pantalla lo reemplaza la columna A PEDIR */
+/* el "se pide ..." de pantalla no se imprime */
 .linea .pista { display: none !important; }
 
 .linea .f input,

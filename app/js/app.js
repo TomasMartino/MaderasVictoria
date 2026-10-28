@@ -1175,7 +1175,40 @@
     });
   }
 
-  function enviar() {
+  /* ---------- PDF del presupuesto (lo que se manda por WhatsApp) ---------- */
+
+  /* dd/mm/aaaa para el PDF. fechaCorta() (mas abajo) devuelve solo "dd/mm". */
+  function fechaCompleta(iso) {
+    var p = String(iso || "").split("-");
+    return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(iso || "");
+  }
+
+  /* Lo que va en una celda del PDF: "-" si el dato esta vacio. */
+  function datoCelda(v) {
+    if (v === null || v === undefined) return "-";
+    var t = String(v).trim();
+    return t === "" ? "-" : t;
+  }
+
+  /* El dibujo vive en js/pdf-presupuesto.js, que no toca el DOM y tiene tests. */
+  function pdfDelPresupuesto() {
+    var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPDF || !window.TV_PDF) return null;
+    return window.TV_PDF.crear({
+      jsPDF: jsPDF,
+      logo: window.TV_LOGO_JPG,
+      negocio: CAT.negocio,
+      estado: estado,
+      calc: CALC,
+      pesos: TV.pesos,
+      dato: datoCelda,
+      fecha: fechaCompleta(estado.fecha),
+    });
+  }
+
+  /* Envía el PDF: por la hoja de compartir del sistema (WhatsApp aparece
+   * ahí) o, si el navegador no comparte archivos, lo descarga y abre el chat. */
+  function enviarPresupuesto() {
     var res = recalcular();
     if (res.avisos.length) {
       avisar("Revisá las líneas marcadas antes de enviar");
@@ -1185,10 +1218,45 @@
       avisar("Agregá al menos un producto con cantidad");
       return;
     }
+
     var tel = (estado.telefono || "").replace(/\D/g, "");
     if (!tel) tel = (CAT.negocio.telefonos[0] || "").replace(/\D/g, "");
-    var url = "https://wa.me/549" + tel + "?text=" + encodeURIComponent(textoWhatsApp());
-    window.open(url, "_blank", "noopener");
+
+    var doc = pdfDelPresupuesto();
+    if (!doc) {
+      /* Sin la librería del PDF: se manda el texto de siempre */
+      window.open("https://wa.me/549" + tel + "?text=" + encodeURIComponent(textoWhatsApp()), "_blank", "noopener");
+      return;
+    }
+
+    var nombre = "Presupuesto " + String(estado.cliente || "Maderas Victoria").trim() +
+      " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
+    nombre = nombre.replace(/[\\/:*?"<>|]/g, "-");
+    var blob = doc.output("blob");
+    var archivo = null;
+    try { archivo = new File([blob], nombre, { type: "application/pdf" }); } catch (e) { archivo = null; }
+
+    if (archivo && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+      try {
+        navigator.share({ files: [archivo], title: nombre }).catch(function () {
+          /* el usuario canceló: no hay nada que avisar */
+        });
+        return;
+      } catch (e) {
+        /* si el navegador no lo permite, sigue por la descarga */
+      }
+    }
+
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    avisar("PDF descargado: adjuntalo en el chat de WhatsApp");
+    window.open("https://wa.me/549" + tel, "_blank", "noopener");
   }
 
   function nuevo() {
@@ -2791,7 +2859,7 @@
 
     $("#agregar").addEventListener("click", agregarLinea);
     $("#imprimir").addEventListener("click", function () { window.print(); });
-    $("#whatsapp").addEventListener("click", enviar);
+    $("#whatsapp").addEventListener("click", enviarPresupuesto);
     $("#guardar").addEventListener("click", function () {
       guardar(true);
       avisar("Guardado");
