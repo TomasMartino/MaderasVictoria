@@ -1834,205 +1834,19 @@
   }
 
   /* Semana corrida de lunes a lunes: devuelvo el ISO del lunes de esa fecha. */
-  function lunesISO(f) {
-    var p = f.split("-");
-    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
-    var dia = d.getDay();
-    d.setDate(d.getDate() + (dia === 0 ? -6 : 1 - dia));
-    var m = d.getMonth() + 1;
-    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (d.getDate() < 10 ? "0" : "") + d.getDate();
+  /* La matematica del balance vive en js/balance.js (probada en
+   * tests/balance.test.mjs). Aca solo se le pasan los datos. */
+  function construirBalance(desde, hasta) {
+    return TV_BALANCE.construir(ventas, gastos, desde, hasta);
   }
 
-  var DIAS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   var MESES_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  function diaBonito(f) {
-    var p = f.split("-");
-    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
-    return DIAS_ES[d.getDay()] + " " + Number(p[2]) + "/" + Number(p[1]);
-  }
-
-  /* Recolecta ventas y gastos no anulados del rango, separando los gastos
-   * en las columnas que usa su Excel: Gastos (otros), Impuestos, Sueldos y
-   * Proveedores. */
-  function recolectarMovimientos(desde, hasta) {
-    var fechas = new Set();
-    var ventasPorFecha = {};
-    var gastosPorFecha = {};
-    var tot = { ventas: 0, gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
-
-    ventas.forEach(function (v) {
-      if (v.anulada) return;
-      if (v.fecha < desde || v.fecha > hasta) return;
-      ventasPorFecha[v.fecha] = (ventasPorFecha[v.fecha] || 0) + v.monto;
-      tot.ventas += v.monto;
-      fechas.add(v.fecha);
-    });
-    gastos.forEach(function (g) {
-      if (g.anulada) return;
-      if (g.fecha < desde || g.fecha > hasta) return;
-      if (!gastosPorFecha[g.fecha]) {
-        gastosPorFecha[g.fecha] = { gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
-      }
-      var clave = g.categoria === "Impuestos" ? "impuestos"
-        : g.categoria === "Sueldos" ? "sueldos"
-        : g.categoria === "Proveedores" ? "proveedores"
-        : "gastos";
-      gastosPorFecha[g.fecha][clave] += g.monto;
-      tot[clave] += g.monto;
-      fechas.add(g.fecha);
-    });
-
-    tot.egresos = tot.gastos + tot.impuestos + tot.sueldos + tot.proveedores;
-
-    return {
-      fechas: Array.from(fechas).sort(),
-      ventasPorFecha: ventasPorFecha,
-      gastosPorFecha: gastosPorFecha,
-      tot: tot,
-    };
-  }
-
-  /* Arma una fila de datos de un día con las columnas del Excel. */
-  function filaDiaBalance(f, mov) {
-    var v = (mov.ventasPorFecha[f] || 0);
-    var c = mov.gastosPorFecha[f] || { gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
-    var egresos = c.gastos + c.impuestos + c.sueldos + c.proveedores;
-    var p = f.split("-");
-    return {
-      tipo: "dia",
-      fecha: f,
-      etiqueta: DIAS_ES[new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()],
-      ventas: v,
-      gastos: c.gastos,
-      impuestos: c.impuestos,
-      sueldos: c.sueldos,
-      proveedores: c.proveedores,
-      ingresos: v,
-      egresos: egresos,
-      neto: v - egresos,
-    };
-  }
-
-  function sumarFilaEn(acc, fila) {
-    acc.ventas += fila.ventas;
-    acc.gastos += fila.gastos;
-    acc.impuestos += fila.impuestos;
-    acc.sueldos += fila.sueldos;
-    acc.proveedores += fila.proveedores;
-    acc.ingresos += fila.ingresos;
-    acc.egresos += fila.egresos;
-    acc.neto += fila.neto;
-  }
-
-  function filaSubtotal(tipo, etiqueta, acc) {
-    return {
-      tipo: tipo,
-      etiqueta: etiqueta,
-      ventas: acc.ventas,
-      gastos: acc.gastos,
-      impuestos: acc.impuestos,
-      sueldos: acc.sueldos,
-      proveedores: acc.proveedores,
-      ingresos: acc.ingresos,
-      egresos: acc.egresos,
-      neto: acc.neto,
-    };
-  }
-
-  function registrosVacios() {
-    return { ventas: 0, gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0, ingresos: 0, egresos: 0, neto: 0 };
-  }
-
-  function esRangoMesCompleto(desde, hasta) {
-    var p = desde.split("-");
-    var y = Number(p[0]);
-    var m = Number(p[1]);
-    var primero = y + "-" + pad2(m) + "-01";
-    var ultimoDia = new Date(y, m, 0).getDate();
-    return desde === primero && hasta === y + "-" + pad2(m) + "-" + pad2(ultimoDia);
-  }
-
-  function pad2(n) { return n < 10 ? "0" + n : "" + n; }
-
-  /* Arma las líneas del balance del rango. Si el rango es un mes completo,
-   * sigue el formato exacto de su Excel BALANCE: fila fija por cada día de
-   * lunes a sábado (vacía si no hay datos), Total Semanal tras cada bloque
-   * y Total Mensual al final. Si no, filas de los días con movimiento, con
-   * subtotales de semana y el total del período. Los domingos no existían
-   * en su planilla (no venden), así que solo se muestran si tuvieron venta
-   * o gasto, para no perder ese dinero del total. */
-  function construirBalance(desde, hasta) {
-    var mov = recolectarMovimientos(desde, hasta);
-    var mesCompleto = esRangoMesCompleto(desde, hasta);
-    var lineas = [];
-    var accTotal = registrosVacios();
-
-    if (mesCompleto) {
-      var p = desde.split("-");
-      var y = Number(p[0]);
-      var m = Number(p[1]);
-      var fin = new Date(y, m - 1, Number(hasta.split("-")[2]));
-      /* Arranca el lunes de la semana que contiene el día 1, como el Excel */
-      var actual = new Date(y, m - 1, 1);
-      actual.setDate(actual.getDate() + (actual.getDay() === 0 ? -6 : 1 - actual.getDay()));
-      var acc = registrosVacios();
-      var abiertaSemana = false;
-
-      while (actual <= fin) {
-        var dow = actual.getDay();
-        var f = actual.getFullYear() + "-" + pad2(actual.getMonth() + 1) + "-" + pad2(actual.getDate());
-        var movDia = mov.ventasPorFecha[f] !== undefined || mov.gastosPorFecha[f] !== undefined;
-        if (dow !== 0 || movDia) {
-          var fila = filaDiaBalance(f, mov);
-          lineas.push(fila);
-          sumarFilaEn(acc, fila);
-          sumarFilaEn(accTotal, fila);
-          abiertaSemana = true;
-        }
-        /* El bloque cierra al llegar al sábado o al terminar el mes */
-        if (abiertaSemana && (actual.getDay() === 6 || f === hasta)) {
-          lineas.push(filaSubtotal("semana", "Total Semanal", acc));
-          acc = registrosVacios();
-          abiertaSemana = false;
-        }
-        actual.setDate(actual.getDate() + 1);
-      }
-      lineas.push(filaSubtotal("mes", "Total Mensual", accTotal));
-    } else {
-      var acc = registrosVacios();
-      var anterior = null;
-      var desdeP = desde.split("-");
-      var hastaP = hasta.split("-");
-      var d = new Date(Number(desdeP[0]), Number(desdeP[1]) - 1, Number(desdeP[2]));
-      var fin = new Date(Number(hastaP[0]), Number(hastaP[1]) - 1, Number(hastaP[2]));
-      while (d <= fin) {
-        var f = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
-        var fila = filaDiaBalance(f, mov);
-        if (anterior !== null && lunesISO(f) !== lunesISO(anterior)) {
-          lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
-          acc = registrosVacios();
-        }
-        lineas.push(fila);
-        sumarFilaEn(acc, fila);
-        sumarFilaEn(accTotal, fila);
-        anterior = f;
-        d.setDate(d.getDate() + 1);
-      }
-      if (anterior !== null) {
-        lineas.push(filaSubtotal("semana", "Semana del " + diaBonito(lunesISO(anterior)) + " al " + diaBonito(anterior), acc));
-      }
-      if (lineas.length) {
-        lineas.push(filaSubtotal("total", "Total del período", accTotal));
-      }
-    }
-
-    return { lineas: lineas, mesCompleto: mesCompleto, bloques: bloquesDeLineas(lineas) };
-  }
-
   /* Rango del mes elegido en el select de mes y el campo de año.
    * Año inválido o incompleto: usa el año en curso. */
+  function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+
   function rangoDeSeleccion() {
     var hoy = new Date();
     var mes = elBalanceMesSel && elBalanceMesSel.value >= 1 && elBalanceMesSel.value <= 12
@@ -2092,27 +1906,6 @@
         ? '<td class="accion"><button type="button" class="btn btn--ghost btn-editar-balance" data-fecha="' + escapar(l.fecha) + '" title="Editar fila">✏</button></td>'
         : '<td></td>') +
       "</tr>";
-  }
-
-  /* Divide las líneas en bloques por semana: filas de días hasta cada
-   * Total Semanal. Los totales (Total Mensual / Total del período) no
-   * pertenecen a ningún bloque. */
-  function bloquesDeLineas(lineas) {
-    var bloques = [];
-    var actual = null;
-    lineas.forEach(function (l) {
-      if (l.tipo === "dia") {
-        if (!actual) {
-          actual = [];
-          bloques.push(actual);
-        }
-        actual.push(l);
-      } else if (l.tipo === "semana" && actual) {
-        actual.push(l);
-        actual = null;
-      }
-    });
-    return bloques;
   }
 
   function fechaCorta(f) {
@@ -2730,8 +2523,7 @@
       if (!btn) return;
       var fecha = btn.dataset.fecha;
       if (!fecha) return;
-      var mov = recolectarMovimientos(rangoDeSeleccion().desde, rangoDeSeleccion().hasta);
-      var dia = filaDiaBalance(fecha, mov);
+      var dia = TV_BALANCE.dia(ventas, gastos, fecha);
       elEditarBalanceFecha.value = fecha;
       elEditarBalanceFechaTexto.textContent = fecha + " · " + dia.etiqueta;
       elEditarBalanceVentas.value = dia.ventas === 0 ? "" : numeroCorto(dia.ventas);
