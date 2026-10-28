@@ -101,13 +101,24 @@ html, body {
   font-size: 7.5pt;
   border-bottom: 1pt solid #2B2118;
   align-items: end;
+  /* Mismas columnas y gap que .linea (más abajo). Si se cambia una,
+   * hay que cambiar la otra o el encabezado queda corrido.
+   * 1fr = 1mm: 169mm útiles (A4 184mm - 6 gaps de 2,5mm). */
+  grid-template-columns: 6fr 62fr 17fr 20fr 20fr 21fr 23fr;
+  gap: 2.5mm;
 }
 
 .lineas__head .c-pedir { display: block; }
 
+/* Los números se imprimen alineados a la derecha: el encabezado lo acompaña. */
+.lineas__head .c-cant,
+.lineas__head .c-largo,
+.lineas__head .c-pedir { text-align: right; }
+
 .linea {
-  /* proporciones en fr: nunca se desbordan del margen aunque cambie el papel */
-  grid-template-columns: 5fr 37fr 8fr 12fr 12fr 12fr 14fr;
+  /* proporciones en fr: nunca se desbordan del margen aunque cambie el papel.
+   * Tiene que ser la MISMA grilla que .lineas__head. */
+  grid-template-columns: 6fr 62fr 17fr 20fr 20fr 21fr 23fr;
   gap: 2.5mm;
   padding: 2.2mm 0;
   border-top: 0;
@@ -132,7 +143,8 @@ html, body {
 
 /* el desplegable imprime la opcion entera con el precio: se reemplaza por
    el nombre pelado del producto */
-.linea .f--prod select { display: none; }
+.linea .f--prod select,
+.linea .f--prod .prod-buscar { display: none; }
 
 .linea .f--prod > .prod-nombre {
   display: block;

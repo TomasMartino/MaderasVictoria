@@ -631,7 +631,9 @@
   function etiquetaMostrada(nombre) {
     var p = nombre ? PRODUCTOS.buscar(catalogo, nombre) : null;
     if (!p) return "";
-    return etiquetaProducto(p) + (p.activo ? "" : " (anulado)");
+    /* Solo el nombre. El precio y el stock se muestran en el desplegable,
+     * no en el campo del producto ya elegido. */
+    return p.nombre + (p.activo ? "" : " (anulado)");
   }
 
   /* Lista filtrada para el buscador del dropdown de producto, agrupada por
