@@ -5,8 +5,9 @@
      madera  #875E37   el anillo del leño
      arena   #EEBB81   la madera clara
    El resto es papel, tinta y lineas de planilla.
-   Tipografia: sans del sistema para la pantalla, serif (Georgia)
-   para los numeros grandes, como el cartel de la marca.
+   Tipografia: Inter para todo (texto, titulos y numeros). Los numeros
+   usan cifras tabulares: todos los digitos ocupan el mismo ancho, asi
+   las columnas de importes quedan alineadas.
    ============================================================ */
 
 :root {
@@ -23,8 +24,8 @@
   --verde: #2E7D4F;
   --ambar: #A9701A;
 
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: var(--sans);
 
   --radio: 12px;
   --sombra: 0 1px 2px rgba(43, 33, 24, 0.05), 0 10px 30px rgba(43, 33, 24, 0.07);
@@ -41,9 +42,19 @@ body {
   color: var(--tinta);
   background: var(--papel);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Cifras de ancho fijo: las columnas de importes no bailan. */
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
 button, input, select { font: inherit; color: inherit; }
+
+/* El shorthand `font` resetea font-variant-numeric: hay que devolverlo. */
+button, input, select, textarea, output {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
 
 :focus-visible {
   outline: 2px solid var(--rojo);
@@ -174,10 +185,11 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .hoja--prox h2 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 28px;
   margin: 12px 0 8px;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .hoja--prox p {
@@ -425,8 +437,9 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .f--total .salida {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 16px;
+  font-weight: 600;
   color: var(--tinta);
 }
 
@@ -544,11 +557,11 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .doc-foot__total strong {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 34px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
 }
 
 /* ---------------- barra de acciones ---------------- */
@@ -582,10 +595,10 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .actionbar__total strong {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 21px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .actionbar__botones {
@@ -785,9 +798,10 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .prod-head h1 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 30px;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0 0 3px;
 }
 
@@ -950,9 +964,10 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .modal__titulo {
-  font-family: var(--serif);
-  font-weight: 400;
+  font-family: var(--display);
+  font-weight: 600;
   font-size: 24px;
+  letter-spacing: -0.02em;
   margin: 0 0 16px;
 }
 
@@ -1201,9 +1216,10 @@ button, input, select { font: inherit; color: inherit; }
 .login-caja img { margin-bottom: 18px; }
 
 .login-caja h1 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 26px;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 0 0 6px;
 }
 
