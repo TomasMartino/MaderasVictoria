@@ -148,3 +148,22 @@ test("reconoce el mes completo y no un rango parcial", () => {
   assert.equal(esRangoMesCompleto("2026-02-01", "2026-02-28"), true);
   assert.equal(esRangoMesCompleto("2026-10-01", "2026-10-15"), false);
 });
+
+test("un monto guardado como texto se suma como numero, no se concatena", () => {
+  const r = construir([V("2026-10-02", "5000")], [], "2026-10-01", "2026-10-31");
+  const total = r.lineas[r.lineas.length - 1];
+  assert.equal(total.ventas, 5000);
+  assert.equal(total.neto, 5000);
+});
+
+test("un registro sin fecha o con monto invalido no rompe ni infla el total", () => {
+  const r = construir(
+    [V("", 4000), V("2026-10-02", "no-es-un-numero"), V("2026-10-03", 1000)],
+    [],
+    "2026-10-01",
+    "2026-10-31"
+  );
+  const total = r.lineas[r.lineas.length - 1];
+  assert.equal(total.ventas, 1000);
+  assert.ok(Number.isFinite(total.neto));
+});

@@ -39,6 +39,18 @@
     return DIAS_ES[d.getDay()] + " " + Number(p[2]) + "/" + Number(p[1]);
   }
 
+  /* Un registro sin fecha ISO o sin monto numerico no se puede ubicar en
+   * ningun dia: si entrara igual, sumaria al total sin aparecer en ninguna
+   * fila y el mes no cerraria con la suma de los dias. */
+  function montoValido(m) {
+    var n = typeof m === "number" ? m : Number(m);
+    return isFinite(n) ? n : null;
+  }
+
+  function fechaValida(f) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(f || ""));
+  }
+
   /* Recolecta ventas y gastos no anulados del rango, separando los gastos
    * en las columnas que usa el Excel. */
   function recolectarMovimientos(ventas, gastos, desde, hasta) {
@@ -48,16 +60,22 @@
     var tot = { ventas: 0, gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
 
     (ventas || []).forEach(function (v) {
-      if (v.anulada) return;
+      if (!v || v.anulada) return;
+      if (!fechaValida(v.fecha)) return;
       if (v.fecha < desde || v.fecha > hasta) return;
-      ventasPorFecha[v.fecha] = (ventasPorFecha[v.fecha] || 0) + v.monto;
-      tot.ventas += v.monto;
+      var monto = montoValido(v.monto);
+      if (monto === null) return;
+      ventasPorFecha[v.fecha] = (ventasPorFecha[v.fecha] || 0) + monto;
+      tot.ventas += monto;
       fechas.add(v.fecha);
     });
 
     (gastos || []).forEach(function (g) {
-      if (g.anulada) return;
+      if (!g || g.anulada) return;
+      if (!fechaValida(g.fecha)) return;
       if (g.fecha < desde || g.fecha > hasta) return;
+      var montoG = montoValido(g.monto);
+      if (montoG === null) return;
       if (!gastosPorFecha[g.fecha]) {
         gastosPorFecha[g.fecha] = { gastos: 0, impuestos: 0, sueldos: 0, proveedores: 0 };
       }
@@ -65,8 +83,8 @@
         : g.categoria === "Sueldos" ? "sueldos"
         : g.categoria === "Proveedores" ? "proveedores"
         : "gastos";
-      gastosPorFecha[g.fecha][clave] += g.monto;
-      tot[clave] += g.monto;
+      gastosPorFecha[g.fecha][clave] += montoG;
+      tot[clave] += montoG;
       fechas.add(g.fecha);
     });
 
