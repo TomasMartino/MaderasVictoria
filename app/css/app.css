@@ -1260,4 +1260,22 @@ button, input, select, textarea, output {
 .excel-cambio__estado { font-size: 12px; font-weight: 600; color: var(--rojo); }
 .excel-cambio__estado--ok { color: #3E7D43; }
 .btn--mini { padding: 3px 10px; font-size: 12px; border-radius: 8px; }
+
+/* Revisar duplicados */
+.dup__ayuda { margin: 0 0 10px; font-size: 12.5px; color: var(--tinta-2); line-height: 1.45; }
+.dup__resumen { margin: 0 0 8px; font-size: 13px; color: var(--tinta-2); }
+.dup__resumen strong { color: var(--tinta); }
+.dup__lista { flex: 1; overflow-y: auto; border: 1px solid var(--linea); border-radius: 10px; min-height: 140px; padding: 4px; }
+.dup__vacio { padding: 18px; font-size: 13px; color: var(--tinta-2); text-align: center; }
+.dup-grupo { border: 1px solid var(--linea); border-radius: 10px; margin: 6px; background: var(--papel); }
+.dup-grupo__cab { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; cursor: pointer; }
+.dup-grupo__cab input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--rojo); flex: 0 0 auto; }
+.dup-grupo__texto { flex: 1 1 auto; min-width: 0; }
+.dup-grupo__titulo { display: block; font-size: 13.5px; font-weight: 700; color: var(--tinta); }
+.dup-grupo__meta { display: block; font-size: 11.5px; color: var(--tinta-2); margin-top: 2px; line-height: 1.4; }
+.dup-grupo__detalle { border-top: 1px dashed var(--linea); padding: 6px 12px 10px 38px; font-size: 12px; color: var(--tinta-2); }
+.dup-fila { display: flex; gap: 8px; justify-content: space-between; padding: 3px 0; }
+.dup-fila span:last-child { font-variant-numeric: tabular-nums; }
+.dup-fila--queda { color: #3E7D43; font-weight: 600; }
+.dup-fila--sale { color: var(--rojo-osc); }
 .modal__error { margin: 8px 0 0; color: var(--rojo); font-size: 12.5px; }

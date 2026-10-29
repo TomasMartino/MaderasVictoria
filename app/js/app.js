@@ -364,7 +364,7 @@
 
   /* Repara las importaciones repetidas: anula las ventas y gastos idénticos
    * que sobraron (misma fecha, detalle/concepto, monto y medio/categoría).
-   * No borra nada. */
+   * No borra nada. Abre un modal para elegir grupo por grupo qué limpiar. */
   function revisarDuplicados() {
     var gruposV = TV_PLANILLA_VENTAS.duplicadas(ventas);
     var gruposG = TV_PLANILLA_VENTAS.duplicadasGastos(gastos);
@@ -374,71 +374,155 @@
       return;
     }
 
-    var sobran = 0;
-    var monto = 0;
-    gruposV.forEach(function (g) {
-      var repetidas = g.ventas.length - 1;
-      sobran += repetidas;
-      monto += (Number(g.ventas[0].monto) || 0) * repetidas;
-    });
-    gruposG.forEach(function (g) {
-      var repetidos = g.gastos.length - 1;
-      sobran += repetidos;
-      monto += (Number(g.gastos[0].monto) || 0) * repetidos;
-    });
+    var modal = $("#modal-duplicados");
+    var lista = $("#duplicados-lista");
+    var resumen = $("#duplicados-resumen");
+    var error = $("#duplicados-error");
+    var btnAplicar = $("#duplicados-aplicar");
 
-    function listar(grupos, campo, texto) {
-      return grupos.slice(0, 6).map(function (g) {
-        var r = g[campo][0];
-        return "· " + r.fecha + " — " + (r[texto] || "sin detalle") + " — " +
-          TV.pesos(r.monto) + " (" + g[campo].length + " veces)";
-      }).join("\n");
+    var grupos = [];
+    gruposV.forEach(function (g) { grupos.push({ tipo: "ventas", grupo: g }); });
+    gruposG.forEach(function (g) { grupos.push({ tipo: "gastos", grupo: g }); });
+
+    function registrosDe(item) {
+      return item.tipo === "ventas" ? item.grupo.ventas : item.grupo.gastos;
     }
 
-    var lineas = [];
-    if (gruposV.length) {
-      lineas.push("VENTAS (" + gruposV.length + " grupos):");
-      lineas.push(listar(gruposV, "ventas", "detalle"));
-    }
-    if (gruposG.length) {
-      lineas.push("GASTOS (" + gruposG.length + " grupos):");
-      lineas.push(listar(gruposG, "gastos", "concepto"));
+    function marcados() {
+      return lista.querySelectorAll("input[type=checkbox]:checked");
     }
 
-    if (!confirm(
-      "Hay registros repetidos por haber importado el Excel más de una vez.\n\n" +
-      lineas.join("\n") + "\n\nSe van a ANULAR " + sobran + " repetidos (" +
-      TV.pesos(monto) + "). De cada grupo queda uno. No se borra nada.\n\n¿Continuar?"
-    )) return;
-    if (!confirm("Última confirmación: " + sobran + " registros quedan anulados. ¿Seguir?")) return;
+    function actualizarResumen() {
+      var elegidos = marcados();
+      var sobran = 0;
+      var monto = 0;
+      Array.prototype.forEach.call(elegidos, function (cb) {
+        var regs = registrosDe(grupos[Number(cb.getAttribute("data-grupo"))]);
+        var repetidos = regs.length - 1;
+        sobran += repetidos;
+        monto += (Number(regs[0].monto) || 0) * repetidos;
+      });
+      resumen.innerHTML = elegidos.length
+        ? "<strong>" + elegidos.length + "</strong> de " + grupos.length +
+          " grupos marcados · se anulan <strong>" + sobran + "</strong> registros (" +
+          TV.pesos(monto) + ")"
+        : "No hay ningún grupo marcado.";
+      btnAplicar.disabled = !elegidos.length;
+    }
 
-    gruposV.forEach(function (g) {
-      for (var i = 1; i < g.ventas.length; i++) {
-        var v = g.ventas[i];
-        anularVenta(v.id, "Duplicada por importación");
-        var local = ventas.find(function (x) { return x.id === v.id; });
-        if (local) {
-          local.anulada = true;
-          local.motivoAnulacion = "Duplicada por importación";
+    function armarGrupo(item, i) {
+      var esVenta = item.tipo === "ventas";
+      var regs = registrosDe(item);
+      var primero = regs[0];
+      var caja = document.createElement("div");
+      caja.className = "dup-grupo";
+
+      var cab = document.createElement("label");
+      cab.className = "dup-grupo__cab";
+
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = true;
+      cb.setAttribute("data-grupo", String(i));
+      cb.addEventListener("change", actualizarResumen);
+
+      var texto = document.createElement("span");
+      texto.className = "dup-grupo__texto";
+
+      var titulo = document.createElement("span");
+      titulo.className = "dup-grupo__titulo";
+      titulo.textContent = (esVenta ? "Venta" : "Gasto") + " · " + primero.fecha;
+
+      var meta = document.createElement("span");
+      meta.className = "dup-grupo__meta";
+      var desc = esVenta ? (primero.detalle || "sin detalle") : (primero.concepto || "sin concepto");
+      meta.textContent = desc + " · " + TV.pesos(primero.monto) + " · " + regs.length + " veces";
+
+      texto.appendChild(titulo);
+      texto.appendChild(meta);
+      cab.appendChild(cb);
+      cab.appendChild(texto);
+      caja.appendChild(cab);
+
+      var detalle = document.createElement("div");
+      detalle.className = "dup-grupo__detalle";
+      regs.forEach(function (r, j) {
+        var fila = document.createElement("div");
+        fila.className = "dup-fila " + (j === 0 ? "dup-fila--queda" : "dup-fila--sale");
+        var etiqueta = document.createElement("span");
+        etiqueta.textContent = j === 0 ? "Queda" : "Se anula";
+        var valor = document.createElement("span");
+        valor.textContent = TV.pesos(r.monto) +
+          (esVenta && r.medioPago ? " · " + r.medioPago : "");
+        fila.appendChild(etiqueta);
+        fila.appendChild(valor);
+        detalle.appendChild(fila);
+      });
+      caja.appendChild(detalle);
+
+      return caja;
+    }
+
+    function anularSeleccionados() {
+      var elegidos = marcados();
+      if (!elegidos.length) return;
+      var sobran = 0;
+      Array.prototype.forEach.call(elegidos, function (cb) {
+        var item = grupos[Number(cb.getAttribute("data-grupo"))];
+        var regs = registrosDe(item);
+        for (var i = 1; i < regs.length; i++) {
+          var r = regs[i];
+          if (item.tipo === "ventas") {
+            anularVenta(r.id, "Duplicada por importación");
+            var local = ventas.find(function (x) { return x.id === r.id; });
+            if (local) {
+              local.anulada = true;
+              local.motivoAnulacion = "Duplicada por importación";
+            }
+          } else {
+            anularGasto(r.id, "Duplicado por importación");
+            var localG = gastos.find(function (x) { return x.id === r.id; });
+            if (localG) {
+              localG.anulada = true;
+              localG.motivoAnulacion = "Duplicado por importación";
+            }
+          }
+          sobran++;
         }
-      }
-    });
-    gruposG.forEach(function (g) {
-      for (var i = 1; i < g.gastos.length; i++) {
-        var ga = g.gastos[i];
-        anularGasto(ga.id, "Duplicado por importación");
-        var localG = gastos.find(function (x) { return x.id === ga.id; });
-        if (localG) {
-          localG.anulada = true;
-          localG.motivoAnulacion = "Duplicado por importación";
-        }
-      }
+      });
+
+      modal.hidden = true;
+      pintarVentas();
+      pintarGastos();
+      pintarBalance();
+      avisar("Se anularon " + sobran + " registros duplicados");
+    }
+
+    lista.innerHTML = "";
+    grupos.forEach(function (item, i) {
+      lista.appendChild(armarGrupo(item, i));
     });
 
-    pintarVentas();
-    pintarGastos();
-    pintarBalance();
-    avisar("Se anularon " + sobran + " registros duplicados");
+    error.hidden = true;
+    modal.hidden = false;
+    actualizarResumen();
+
+    $("#duplicados-todos").onclick = function () {
+      Array.prototype.forEach.call(lista.querySelectorAll("input[type=checkbox]"), function (c) {
+        c.checked = true;
+      });
+      actualizarResumen();
+    };
+    $("#duplicados-ninguno").onclick = function () {
+      Array.prototype.forEach.call(lista.querySelectorAll("input[type=checkbox]"), function (c) {
+        c.checked = false;
+      });
+      actualizarResumen();
+    };
+    $("#duplicados-cancelar").onclick = function () { modal.hidden = true; };
+    btnAplicar.onclick = anularSeleccionados;
+    /* Cerrar tocando el fondo, sin cerrar si el click es dentro de la caja. */
+    modal.onclick = function (ev) { if (ev.target === modal) modal.hidden = true; };
   }
 
   /* Anula una venta: la marca como anulada con motivo. No se borra. */
