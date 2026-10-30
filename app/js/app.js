@@ -1290,8 +1290,35 @@
     });
   }
 
-  /* Envía el PDF: por la hoja de compartir del sistema (WhatsApp aparece
-   * ahí) o, si el navegador no comparte archivos, lo descarga y abre el chat. */
+  /* Número para un link wa.me. Si ya viene con país (54...) se respeta; si es
+   * un número local se le agrega 549. Evita el "549549..." al duplicar. */
+  function numeroWa(tel) {
+    var d = String(tel || "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.indexOf("54") === 0) return d;
+    return "549" + d;
+  }
+
+  /* Baja el PDF al equipo. */
+  function bajarArchivo(blob, nombre) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+
+  /* Mensaje que acompaña al PDF en el chat. */
+  function mensajeConPdf() {
+    return "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
+  }
+
+  /* Envía el presupuesto: descarga el PDF y abre el chat del número directo.
+   * WhatsApp no deja adjuntar archivos por link (wa.me solo lleva texto), así
+   * que el PDF se baja y se adjunta en el chat que ya queda abierto. */
   function enviarPresupuesto() {
     var res = recalcular();
     if (res.avisos.length) {
@@ -1303,13 +1330,19 @@
       return;
     }
 
-    var tel = (estado.telefono || "").replace(/\D/g, "");
-    if (!tel) tel = (CAT.negocio.telefonos[0] || "").replace(/\D/g, "");
+    var telCliente = numeroWa(estado.telefono);
+    var telNegocio = numeroWa(CAT.negocio.telefonos[0]);
+    var tel = telCliente || telNegocio;
 
     var doc = pdfDelPresupuesto();
     if (!doc) {
       /* Sin la librería del PDF: se manda el texto de siempre */
-      window.open("https://wa.me/549" + tel + "?text=" + encodeURIComponent(textoWhatsApp()), "_blank", "noopener");
+      var texto = textoWhatsApp();
+      if (!tel) {
+        avisar("Poné el teléfono del cliente para abrir su chat");
+        return;
+      }
+      window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(texto), "_blank", "noopener");
       return;
     }
 
@@ -1317,30 +1350,27 @@
       " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
     nombre = nombre.replace(/[\\/:*?"<>|]/g, "-");
     var blob = doc.output("blob");
-    var archivo = null;
-    try { archivo = new File([blob], nombre, { type: "application/pdf" }); } catch (e) { archivo = null; }
 
-    if (archivo && navigator.canShare && navigator.canShare({ files: [archivo] })) {
-      try {
-        navigator.share({ files: [archivo], title: nombre }).catch(function () {
-          /* el usuario canceló: no hay nada que avisar */
-        });
-        return;
-      } catch (e) {
-        /* si el navegador no lo permite, sigue por la descarga */
+    /* Sin teléfono no hay chat al que ir: se abre la hoja de compartir para
+     * que al menos pueda elegir el contacto a mano. */
+    if (!tel) {
+      var archivo = null;
+      try { archivo = new File([blob], nombre, { type: "application/pdf" }); } catch (e) { archivo = null; }
+      if (archivo && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try {
+          navigator.share({ files: [archivo], title: nombre }).catch(function () {});
+          return;
+        } catch (e) { /* sigue por la descarga */ }
       }
+      bajarArchivo(blob, nombre);
+      avisar("Sin teléfono del cliente: ponelo arriba para abrir su chat");
+      return;
     }
 
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = nombre;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-    avisar("PDF descargado: adjuntalo en el chat de WhatsApp");
-    window.open("https://wa.me/549" + tel, "_blank", "noopener");
+    /* Caso normal: se baja el PDF y se abre el chat de ESE número. */
+    bajarArchivo(blob, nombre);
+    avisar("PDF descargado: adjuntalo en el chat que se abrió");
+    window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(mensajeConPdf()), "_blank", "noopener");
   }
 
   function nuevo() {
@@ -1698,6 +1728,46 @@
     return nuevo < 0 ? null : nuevo;
   }
 
+  /* Cuando los registros del día ya suman MÁS que el Excel, no alcanza con
+   * editar el primero (quedaría negativo). Se recorre la lista en orden y cada
+   * registro conserva lo que entra hasta llegar al objetivo; el que queda en
+   * 0 se anula (no se borra). Así el total del día queda exacto. */
+  function recortarAlTotal(lista, objetivo, tipo) {
+    var restante = Math.max(0, objetivo);
+    var motivo = "Ajustado al total del Excel";
+    lista.forEach(function (r) {
+      var actual = Number(r.monto) || 0;
+      var nuevo = Math.round(Math.min(actual, restante) * 100) / 100;
+      restante = Math.round((restante - nuevo) * 100) / 100;
+      if (nuevo > 0) {
+        if (nuevo !== actual) {
+          if (tipo === "ventas") editarVenta(r.id, { monto: nuevo });
+          else editarGasto(r.id, { monto: nuevo });
+        }
+      } else if (tipo === "ventas") {
+        anularVenta(r.id, motivo);
+        var lv = ventas.find(function (x) { return x.id === r.id; });
+        if (lv) { lv.anulada = true; lv.motivoAnulacion = motivo; }
+      } else {
+        anularGasto(r.id, motivo);
+        var lg = gastos.find(function (x) { return x.id === r.id; });
+        if (lg) { lg.anulada = true; lg.motivoAnulacion = motivo; }
+      }
+    });
+    /* Si el Excel pide más de lo que había, el resto va al primer registro vivo */
+    if (restante > 0 && lista.length) {
+      var primero = lista[0];
+      var base = Number(primero.monto) || 0;
+      if (tipo === "ventas") {
+        primero.anulada = false;
+        editarVenta(primero.id, { monto: Math.round((base + restante) * 100) / 100, anulada: false });
+      } else {
+        primero.anulada = false;
+        editarGasto(primero.id, { monto: Math.round((base + restante) * 100) / 100, anulada: false });
+      }
+    }
+  }
+
   /* Ajusta el día para que el TOTAL coincida con el Excel. Si no hay
    * registros, crea uno. Si hay varios, la suma manda: antes se editaba
    * solo el primero y el resto quedaba sumando (5 + 5 = 10 para siempre). */
@@ -1714,7 +1784,7 @@
       } else {
         var nuevoV = montoParaLlegarAlTotal(vs, valor);
         if (nuevoV === null) {
-          avisar("Ventas del " + fecha + ": lo cargado ya suma más que el Excel. Revisá duplicados.");
+          recortarAlTotal(vs, valor, "ventas");
         } else {
           editarVenta(vs[0].id, { monto: nuevoV });
         }
@@ -1739,7 +1809,7 @@
       } else {
         var nuevoG = montoParaLlegarAlTotal(gs, valor);
         if (nuevoG === null) {
-          avisar(categoria + " del " + fecha + ": lo cargado ya suma más que el Excel. Revisá duplicados.");
+          recortarAlTotal(gs, valor, "gastos");
         } else {
           editarGasto(gs[0].id, { monto: nuevoG });
         }
