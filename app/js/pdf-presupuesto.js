@@ -50,9 +50,9 @@
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.text("VENTA DE MADERAS", M + 4, yTxt + 4.4);
-    doc.text("Tiranter\u00edas - pino - \u00e1lamo", M + 4, yTxt + 8);
-    doc.text("machimbre - rollizos eucaliptos", M + 4, yTxt + 11.6);
-    doc.text("rollizo de eucalipto impregnado", M + 4, yTxt + 15.2);
+    doc.text("Tiranter\u00edas - Pino - \u00c1lamo", M + 4, yTxt + 8);
+    doc.text("Machimbre - Rollizos Eucaliptos", M + 4, yTxt + 11.6);
+    doc.text("Rollizo de Eucalipto Impregnado", M + 4, yTxt + 15.2);
 
     doc.setFontSize(6.6);
     doc.text("Lateral Acceso Sur 7522 - Carrodilla - Luj\u00e1n de Cuyo - Mendoza", M + 4, yTxt + 19.6);
