@@ -384,50 +384,21 @@
   }
 
   /* Aplica la edición de una fila del balance (un día) a las ventas y
-   * gastos subyacentes. Los campos son los totales del día por categoría. */
+   * gastos subyacentes. Los campos son los totales del día por categoría.
+   * Mismo criterio que la comparación con el Excel: no toca el detalle
+   * cargado a mano, ajusta el registro de resumen del día. */
   function aplicarEdicionFilaBalance(fecha, valores) {
-    /* --- Ventas --- */
-    var vdias = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
-    var ventasActual = vdias.reduce(function (s, v) { return s + (typeof v.monto === "number" ? v.monto : 0); }, 0);
-    var ventasNuevo = typeof valores.ventas === "number" ? valores.ventas : 0;
-    if (vdias.length === 0) {
-      if (ventasNuevo > 0) {
-        guardarVenta({ fecha: fecha, monto: ventasNuevo, medioPago: "Efectivo", detalle: "Ventas " + fecha });
-      }
-    } else {
-      var nuevoV = montoParaLlegarAlTotal(vdias, ventasNuevo);
-      if (nuevoV === null) {
-        avisar("Ventas del " + fecha + ": lo cargado ya suma más que el total que pusiste");
-      } else {
-        editarVenta(vdias[0].id, { monto: nuevoV });
-      }
-    }
+    ajustarResumenDia("ventas", fecha, "Ventas " + fecha, null,
+      typeof valores.ventas === "number" ? valores.ventas : 0);
 
-    /* --- Gastos por categoría --- */
-    var categorias = [
-      { clave: "gastos", categoria: "Otros", campo: "gastos" },
-      { clave: "impuestos", categoria: "Impuestos", campo: "impuestos" },
-      { clave: "sueldos", categoria: "Sueldos", campo: "sueldos" },
-      { clave: "proveedores", categoria: "Proveedores", campo: "proveedores" },
-    ];
-    categorias.forEach(function (cat) {
-      var gdias = gastos.filter(function (x) {
-        return !x.anulada && x.fecha === fecha && x.categoria === cat.categoria;
-      });
-    var actual = gdias.reduce(function (s, g) { return s + (typeof g.monto === "number" ? g.monto : 0); }, 0);
-    var nuevo = typeof valores[cat.campo] === "number" ? valores[cat.campo] : 0;
-    if (gdias.length === 0) {
-      if (nuevo > 0) {
-        guardarGasto({ fecha: fecha, monto: nuevo, concepto: cat.categoria + " " + fecha, categoria: cat.categoria });
-      }
-    } else {
-      var nuevoG = montoParaLlegarAlTotal(gdias, nuevo);
-      if (nuevoG === null) {
-        avisar(cat.categoria + " del " + fecha + ": lo cargado ya suma más que el total que pusiste");
-      } else {
-        editarGasto(gdias[0].id, { monto: nuevoG });
-      }
-    }
+    [
+      { categoria: "Otros", campo: "gastos" },
+      { categoria: "Impuestos", campo: "impuestos" },
+      { categoria: "Sueldos", campo: "sueldos" },
+      { categoria: "Proveedores", campo: "proveedores" },
+    ].forEach(function (cat) {
+      ajustarResumenDia("gastos", fecha, cat.categoria + " " + fecha, cat.categoria,
+        typeof valores[cat.campo] === "number" ? valores[cat.campo] : 0);
     });
 
     pintarVentas();
@@ -1804,10 +1775,10 @@
         var v = ventas.find(function (x) {
           return x.fecha === c.fecha && PRODUCTOS.clave(x.detalle || "") === PRODUCTOS.clave(c.detalle);
         });
-        if (v) {
-          v.monto = c.valores.a;
-          guardarVentasLocales();
-        }
+        /* Va por editarVenta: si solo se cambiaba el objeto local, el
+         * listener de Firestore lo pisaba con el valor viejo de la nube y el
+         * cambio no quedaba. */
+        if (v) editarVenta(v.id, { monto: c.valores.a });
       }
       pintarVentas();
       pintarBalance();
@@ -1858,108 +1829,96 @@
     pintarProductos();
   }
 
-  /* Deja la SUMA del grupo exactamente en `objetivo` ajustando el primer
-   * registro, sin borrar ni anular nada. Devuelve el monto a poner, o null
-   * si los demás registros ya suman más que el objetivo (ahí no se puede
-   * sin limpiar duplicados primero). */
-  function montoParaLlegarAlTotal(lista, objetivo) {
-    var otros = 0;
-    for (var i = 1; i < lista.length; i++) otros += Number(lista[i].monto) || 0;
-    var nuevo = Math.round((objetivo - otros) * 100) / 100;
-    return nuevo < 0 ? null : nuevo;
-  }
-
-  /* Cuando los registros del día ya suman MÁS que el Excel, no alcanza con
-   * editar el primero (quedaría negativo). Se recorre la lista en orden y cada
-   * registro conserva lo que entra hasta llegar al objetivo; el que queda en
-   * 0 se anula (no se borra). Así el total del día queda exacto. */
-  function recortarAlTotal(lista, objetivo, tipo) {
-    var restante = Math.max(0, objetivo);
-    var motivo = "Ajustado al total del Excel";
-    lista.forEach(function (r) {
-      var actual = Number(r.monto) || 0;
-      var nuevo = Math.round(Math.min(actual, restante) * 100) / 100;
-      restante = Math.round((restante - nuevo) * 100) / 100;
-      if (nuevo > 0) {
-        if (nuevo !== actual) {
-          if (tipo === "ventas") editarVenta(r.id, { monto: nuevo });
-          else editarGasto(r.id, { monto: nuevo });
-        }
-      } else if (tipo === "ventas") {
-        anularVenta(r.id, motivo);
-        var lv = ventas.find(function (x) { return x.id === r.id; });
-        if (lv) { lv.anulada = true; lv.motivoAnulacion = motivo; }
-      } else {
-        anularGasto(r.id, motivo);
-        var lg = gastos.find(function (x) { return x.id === r.id; });
-        if (lg) { lg.anulada = true; lg.motivoAnulacion = motivo; }
-      }
-    });
-    /* Si el Excel pide más de lo que había, el resto va al primer registro vivo */
-    if (restante > 0 && lista.length) {
-      var primero = lista[0];
-      var base = Number(primero.monto) || 0;
-      if (tipo === "ventas") {
-        primero.anulada = false;
-        editarVenta(primero.id, { monto: Math.round((base + restante) * 100) / 100, anulada: false });
-      } else {
-        primero.anulada = false;
-        editarGasto(primero.id, { monto: Math.round((base + restante) * 100) / 100, anulada: false });
-      }
-    }
-  }
-
-  /* Ajusta el día para que el TOTAL coincida con el Excel. Si no hay
-   * registros, crea uno. Si hay varios, la suma manda: antes se editaba
-   * solo el primero y el resto quedaba sumando (5 + 5 = 10 para siempre). */
+  /* Deja el TOTAL del día (o de la categoría) en `valor` sin tocar nada de lo
+   * cargado a mano. Suma los registros reales y ajusta un único registro de
+   * resumen por día y categoría.
+   *
+   * Antes se editaba el primer registro del día para llegar al total. Eso
+   * rompía el detalle: al comparar después la planilla de ventas, ese mismo
+   * registro no coincidía con el Excel y se cambiaba de vuelta, así que las
+   * dos comparaciones se peleaban en un bucle y nunca quedaba nada. */
   function aplicarBalanceCampo(c, campo) {
     var fecha = c.fecha;
     var valor = typeof c.valores.a === "number" ? c.valores.a : 0;
 
     if (campo === "ventas") {
-      var vs = ventas.filter(function (x) { return !x.anulada && x.fecha === fecha; });
-      if (vs.length === 0) {
-        if (valor > 0) {
-          guardarVenta({ fecha: fecha, monto: valor, medioPago: "Efectivo", detalle: "Ventas " + fecha });
-        }
-      } else {
-        var nuevoV = montoParaLlegarAlTotal(vs, valor);
-        if (nuevoV === null) {
-          recortarAlTotal(vs, valor, "ventas");
-        } else {
-          editarVenta(vs[0].id, { monto: nuevoV });
-        }
-      }
-    } else {
-      /* Gastos por categoría: gastos=Otros, impuestos, sueldos, proveedores */
-      var categoriaMap = {
-        "gastos": "Otros",
-        "impuestos": "Impuestos",
-        "sueldos": "Sueldos",
-        "proveedores": "Proveedores"
-      };
-      var categoria = categoriaMap[campo] || "Otros";
-
-      var gs = gastos.filter(function (x) {
-        return !x.anulada && x.fecha === fecha && x.categoria === categoria;
-      });
-      if (gs.length === 0) {
-        if (valor > 0) {
-          guardarGasto({ fecha: fecha, monto: valor, concepto: categoria + " " + fecha, categoria: categoria });
-        }
-      } else {
-        var nuevoG = montoParaLlegarAlTotal(gs, valor);
-        if (nuevoG === null) {
-          recortarAlTotal(gs, valor, "gastos");
-        } else {
-          editarGasto(gs[0].id, { monto: nuevoG });
-        }
-      }
+      ajustarResumenDia("ventas", fecha, "Ventas " + fecha, null, valor);
+      return;
     }
 
-    pintarVentas();
-    pintarGastos();
-    pintarBalance();
+    /* Gastos por categoría: gastos=Otros, impuestos, sueldos, proveedores */
+    var categoriaMap = {
+      "gastos": "Otros",
+      "impuestos": "Impuestos",
+      "sueldos": "Sueldos",
+      "proveedores": "Proveedores"
+    };
+    var categoria = categoriaMap[campo] || "Otros";
+    ajustarResumenDia("gastos", fecha, categoria + " " + fecha, categoria, valor);
+  }
+
+  function sinAcentosMin(v) {
+    return PRODUCTOS.sinAcentos(String(v || "").toLowerCase()).trim();
+  }
+
+  /* Calcula lo cargado a mano para ese día (sin el registro de resumen) y
+   * deja el resumen con la diferencia. Si la diferencia es cero, anula el
+   * resumen. Nunca toca los registros reales. */
+  function ajustarResumenDia(tipo, fecha, nombreResumen, categoria, valor) {
+    var esVenta = tipo === "ventas";
+    var lista = esVenta ? ventas : gastos;
+    var claveResumen = PRODUCTOS.clave(nombreResumen);
+    var cat = sinAcentosMin(categoria);
+    var resumenes = [];
+    var cargado = 0;
+
+    lista.forEach(function (r) {
+      if (r.anulada || r.fecha !== fecha) return;
+      if (!esVenta && sinAcentosMin(r.categoria) !== cat) return;
+      var nombre = esVenta ? (r.detalle || "") : (r.concepto || "");
+      if (PRODUCTOS.clave(nombre) === claveResumen) {
+        resumenes.push(r);
+        return;
+      }
+      cargado += Number(r.monto) || 0;
+    });
+
+    var diferencia = Math.round((valor - cargado) * 100) / 100;
+    var motivo = "Ajustado al total del Excel";
+
+    /* Si quedaron resumenes repetidos de importaciones viejas, se anulan
+     * todos menos uno: si no, el sobrante se sumaria como si fuera detalle. */
+    for (var k = 1; k < resumenes.length; k++) {
+      if (esVenta) anularVenta(resumenes[k].id, motivo);
+      else anularGasto(resumenes[k].id, motivo);
+      resumenes[k].anulada = true;
+      resumenes[k].motivoAnulacion = motivo;
+    }
+    var resumen = resumenes.length ? resumenes[0] : null;
+
+    if (resumen) {
+      if (Math.abs(diferencia) < 0.005) {
+        if (!resumen.anulada) {
+          if (esVenta) anularVenta(resumen.id, motivo);
+          else anularGasto(resumen.id, motivo);
+          resumen.anulada = true;
+          resumen.motivoAnulacion = motivo;
+        }
+      } else if (esVenta) {
+        editarVenta(resumen.id, { monto: diferencia, anulada: false });
+      } else {
+        editarGasto(resumen.id, { monto: diferencia, anulada: false });
+      }
+      return;
+    }
+
+    if (Math.abs(diferencia) < 0.005) return;
+
+    if (esVenta) {
+      guardarVenta({ fecha: fecha, monto: diferencia, medioPago: "Efectivo", detalle: nombreResumen });
+    } else {
+      guardarGasto({ fecha: fecha, monto: diferencia, concepto: nombreResumen, categoria: categoria });
+    }
   }
 
   function decidir(i, decision) {
