@@ -17,6 +17,9 @@ Branch: `main`. Delivery: work-unit commits. Test runner: `node --test "tests/*.
 - **S10** — Ventas diarias y balance se actualizan solos, porque el balance se calcula desde las ventas.
 - **S11** — La seña y el pago final piden **medio de pago** (Efectivo / Transferencia / Tarjeta). La nota guarda `medioSena` y `medioFinal`; la venta asociada queda con un solo medio: el de la seña mientras está señalada y el del pago final al quedar pagada.
 - **S12** — El sello en el PDF (PAGADO / SEÑADO) queda **fuera de alcance**: el usuario lo descartó.
+- **S13** — Cada nota se puede **eliminar** (para limpiar pruebas o notas cargadas por error). Si tenía venta, pregunta si anularla.
+- **S14** — La nota guarda y muestra los datos del cliente: nombre, teléfono, dirección, localidad y CUIT. La fecha sola no alcanza para saber de quién es.
+- **S15** — En modo local, ventas y gastos reciben un id propio, para poder editarlos, anularlos y enlazarlos (antes quedaban sin id).
 
 Assumptions (no confirmadas con el usuario, avisadas en el mensaje final):
 - La nota usa el mismo número del documento y su fecha es la del documento.

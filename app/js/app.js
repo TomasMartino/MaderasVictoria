@@ -255,6 +255,12 @@
 
   /* ---------- ventas y gastos (etapa 2) ---------- */
 
+  /* Id para los registros que se guardan solo en este equipo. Sin esto, una
+   * venta local quedaba sin id y no se podía ni editar ni anular después. */
+  function idLocal(prefijo) {
+    return prefijo + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  }
+
   /* Carga una venta en Firestore y en el estado local. `listo` (opcional) se
    * llama con la venta ya guardada, para poder enlazarla desde otro lado
    * (por ejemplo la nota de pedido necesita el id). */
@@ -264,6 +270,7 @@
     }
     if (!usaFirebase || !usuarioActual) {
       /* modo local */
+      if (!venta.id) venta.id = idLocal("v");
       ventas.push(venta);
       guardarVentasLocales();
       cerrar();
@@ -293,6 +300,7 @@
         cerrar();
       }).catch(function (err) {
         /* Si la subida a la nube falla, al menos la venta queda visible acá */
+        if (!venta.id) venta.id = idLocal("v");
         ventas.push(venta);
         guardarVentasLocales();
         pintarVentas();
@@ -301,6 +309,7 @@
         cerrar();
       });
     } catch (e) {
+      if (!venta.id) venta.id = idLocal("v");
       ventas.push(venta);
       guardarVentasLocales();
       cerrar();
@@ -310,6 +319,7 @@
   /* Carga un gasto en Firestore y en el estado local. */
   function guardarGasto(gasto) {
     if (!usaFirebase || !usuarioActual) {
+      if (!gasto.id) gasto.id = idLocal("g");
       gastos.push(gasto);
       guardarGastosLocales();
       return;
@@ -334,6 +344,7 @@
           pintarBalance();
         }
       }).catch(function (err) {
+        if (!gasto.id) gasto.id = idLocal("g");
         gastos.push(gasto);
         guardarGastosLocales();
         pintarGastos();
@@ -341,6 +352,7 @@
         avisar("El gasto no se subió a la nube: quedó en este equipo");
       });
     } catch (e) {
+      if (!gasto.id) gasto.id = idLocal("g");
       gastos.push(gasto);
       guardarGastosLocales();
     }
@@ -2793,6 +2805,9 @@
         numero: nota.numero == null ? null : nota.numero,
         cliente: nota.cliente || "",
         telefono: nota.telefono || "",
+        direccion: nota.direccion || "",
+        localidad: nota.localidad || "",
+        cuit: nota.cuit || "",
         fecha: nota.fecha || "",
         total: nota.total || 0,
         sena: nota.sena || 0,
@@ -2843,6 +2858,9 @@
           numero: d.numero == null ? null : d.numero,
           cliente: d.cliente || "",
           telefono: d.telefono || "",
+          direccion: d.direccion || "",
+          localidad: d.localidad || "",
+          cuit: d.cuit || "",
           fecha: d.fecha || "",
           total: Number(d.total) || 0,
           sena: Number(d.sena) || 0,
@@ -2877,22 +2895,30 @@
       }
     }
 
+    var datosCliente = {
+      cliente: estado.cliente || "",
+      telefono: estado.telefono || "",
+      direccion: estado.direccion || "",
+      localidad: estado.localidad || "",
+      cuit: estado.cuit || "",
+      fecha: estado.fecha || "",
+      total: total,
+    };
+
     if (existente) {
-      editarNota(existente.id, {
-        cliente: estado.cliente || "",
-        telefono: estado.telefono || "",
-        fecha: estado.fecha || "",
-        total: total,
-      });
+      editarNota(existente.id, datosCliente);
       avisar("Nota de pedido actualizada");
       return;
     }
 
     guardarNota({
       numero: estado.numero == null ? null : estado.numero,
-      cliente: estado.cliente || "",
-      telefono: estado.telefono || "",
-      fecha: estado.fecha || "",
+      cliente: datosCliente.cliente,
+      telefono: datosCliente.telefono,
+      direccion: datosCliente.direccion,
+      localidad: datosCliente.localidad,
+      cuit: datosCliente.cuit,
+      fecha: datosCliente.fecha,
       total: total,
       sena: 0,
       estado: "pendiente",
@@ -2946,16 +2972,23 @@
         acciones += '<button class="btn btn--ghost btn--mini btn-nota-senar" type="button" data-id="' + escapar(n.id) + '">Seña</button>';
       }
       if (n.estado !== "baja") {
-        acciones += '<button class="btn btn--peligro btn--mini btn-nota-baja" type="button" data-id="' + escapar(n.id) + '">Dar de baja</button>';
+        acciones += '<button class="btn btn--ghost btn--mini btn-nota-baja" type="button" data-id="' + escapar(n.id) + '">Dar de baja</button>';
       }
+      acciones += '<button class="btn btn--peligro btn--mini btn-nota-borrar" type="button" data-id="' + escapar(n.id) + '">Eliminar</button>';
+
+      var contacto = [];
+      if (n.telefono) contacto.push("Tel. " + n.telefono);
+      if (n.direccion) contacto.push(n.direccion);
+      if (n.localidad) contacto.push(n.localidad);
+      if (n.cuit) contacto.push("CUIT " + n.cuit);
 
       return '<div class="nota-fila' + (n.estado === "baja" ? ' nota-fila--baja' : '') + '">' +
         '<div class="nota__datos">' +
           '<div class="nota__nombre">' + escapar(NT.nombreCliente(n)) + '</div>' +
           '<span class="nota__meta">' + escapar(n.fecha || "sin fecha") +
             (n.numero != null ? ' · N° ' + escapar(String(n.numero)) : '') +
-            (n.telefono ? ' · ' + escapar(n.telefono) : '') +
           '</span>' +
+          (contacto.length ? '<span class="nota__meta">' + escapar(contacto.join(' · ')) + '</span>' : '') +
         '</div>' +
         '<div class="nota__importes">' +
           '<span class="nota__total">' + TV.pesos(n.total) + '</span>' +
@@ -3141,6 +3174,30 @@
     avisar("Nota dada de baja");
   }
 
+  /* Borra la nota de verdad. Sirve para limpiar pruebas y notas cargadas por
+   * error; si tenía una venta asociada, se puede anular en el mismo paso. */
+  function borrarNota(id) {
+    var n = notaPorId(id);
+    if (!n) return;
+    if (!confirm("¿Eliminar la nota de " + NT.nombreCliente(n) + "?\n\nNo se puede deshacer.")) return;
+
+    if (n.ventaId && confirm("Esta nota tiene una venta cargada. ¿Anular también esa venta?")) {
+      anularVenta(n.ventaId, "Nota de pedido eliminada");
+    }
+
+    notas = notas.filter(function (x) { return x.id !== id; });
+    guardarNotasLocales();
+    pintarNotas();
+    avisar("Nota eliminada");
+
+    if (!usaFirebase || !usuarioActual) return;
+    try {
+      db.collection("notas").doc(id).delete().catch(function () {
+        avisar("No se pudo eliminar en la nube: revisá la conexión");
+      });
+    } catch (e) {}
+  }
+
   function enlazarNotas() {
     if (!elNotasLista) return;
 
@@ -3151,7 +3208,9 @@
       b = ev.target.closest(".btn-nota-senar");
       if (b) { abrirModalNota(b.dataset.id, "senar"); return; }
       b = ev.target.closest(".btn-nota-baja");
-      if (b) { accionNotaBaja(b.dataset.id); }
+      if (b) { accionNotaBaja(b.dataset.id); return; }
+      b = ev.target.closest(".btn-nota-borrar");
+      if (b) { borrarNota(b.dataset.id); }
     });
 
     var form = $("#form-nota");
