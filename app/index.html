@@ -101,9 +101,32 @@
                 <input id="direccion" type="text" autocomplete="off" placeholder="Calle y número">
               </label>
               <label class="campo-linea">
+                <span>Localidad</span>
+                <input id="localidad" type="text" autocomplete="off" placeholder="Luján de Cuyo">
+              </label>
+              <label class="campo-linea">
+                <span>Provincia</span>
+                <input id="provincia" type="text" autocomplete="off" placeholder="Mendoza">
+              </label>
+              <label class="campo-linea">
                 <span>Teléfono</span>
                 <input id="telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="261 000 0000">
               </label>
+              <label class="campo-linea">
+                <span>CUIT / CUIL</span>
+                <input id="cuit" type="text" inputmode="numeric" autocomplete="off" placeholder="20-00000000-0">
+              </label>
+              <label class="campo-linea">
+                <span>Condición IVA</span>
+                <input id="condicion-iva" type="text" list="cond-iva-lista" autocomplete="off" placeholder="Responsable Inscripto">
+              </label>
+              <datalist id="cond-iva-lista">
+                <option value="Responsable Inscripto"></option>
+                <option value="Monotributo"></option>
+                <option value="Consumidor Final"></option>
+                <option value="Exento"></option>
+                <option value="No Responsable"></option>
+              </datalist>
             </div>
 
             <div class="doc-head__meta">

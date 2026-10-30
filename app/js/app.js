@@ -66,13 +66,84 @@
   var CALC = null;
 
   var estado = {
+    numero: null,
+    numeroRemito: null,
     cliente: "",
     direccion: "",
     telefono: "",
+    cuit: "",
+    localidad: "",
+    provincia: "",
+    condicionIva: "",
     fecha: "",
     tipo: "PRESUPUESTO",
     lineas: [],
   };
+
+  /* ---------- numeracion ----------
+   * Presupuestos y remitos llevan series separadas, cada una autoincremental.
+   * Se guarda el ultimo emitido en este equipo y tambien en Firestore para que
+   * dos dispositivos no repitan el mismo numero. */
+  var NUMERO_BASE = 23889;      /* el primer presupuesto sale con 23890 */
+  var NUMERO_BASE_REMITO = 0;   /* el primer remito sale con 1 */
+
+  /* Contador de una serie: guarda el ultimo numero en localStorage y, si hay
+   * sesion, lo lleva a un documento de Firestore con una transaccion. */
+  function crearContador(claveLocal, docFirestore, base) {
+    function leer() {
+      try {
+        var v = Number(localStorage.getItem(claveLocal));
+        if (isFinite(v) && v >= base) return v;
+      } catch (e) {}
+      return base;
+    }
+
+    var ultimo = leer();
+
+    function fijar(n) {
+      ultimo = n;
+      try { localStorage.setItem(claveLocal, String(n)); } catch (e) {}
+    }
+
+    return {
+      ultimo: function () { return ultimo; },
+      /* Reserva el siguiente y lo entrega por callback. Sin sesion o sin red
+       * usa el contador del equipo. */
+      reservar: function (listo) {
+        if (!usaFirebase || !usuarioActual) {
+          fijar(ultimo + 1);
+          listo(ultimo);
+          return;
+        }
+        var ref = db.collection("config").doc(docFirestore);
+        db.runTransaction(function (tx) {
+          return tx.get(ref).then(function (doc) {
+            var n = doc.exists ? Number(doc.data().numero) || 0 : 0;
+            n = Math.max(n, leer()) + 1;
+            tx.set(ref, { numero: n }, { merge: true });
+            return n;
+          });
+        }).then(function (n) {
+          fijar(n);
+          listo(n);
+        }).catch(function () {
+          fijar(ultimo + 1);
+          listo(ultimo);
+        });
+      },
+    };
+  }
+
+  var contadorPresupuesto = crearContador("tiovity.ultimo-numero.v1", "presupuesto-numero", NUMERO_BASE);
+  var contadorRemito = crearContador("tiovity.ultimo-remito.v1", "remito-numero", NUMERO_BASE_REMITO);
+  /* Evita pedir dos numeros de remito si la pantalla se repinta mientras la
+   * reserva todavia esta en vuelo. */
+  var reservandoRemito = false;
+
+  /* El numero que corresponde al documento que se esta por emitir. */
+  function numeroDelTipo() {
+    return esRemito() ? estado.numeroRemito : estado.numero;
+  }
 
   var ventas = [];
   var gastos = [];
@@ -907,9 +978,15 @@
     if (!crudo) return false;
     try {
       var d = JSON.parse(crudo);
+      estado.numero = d.numero || null;
+      estado.numeroRemito = d.numeroRemito || null;
       estado.cliente = d.cliente || "";
       estado.direccion = d.direccion || "";
       estado.telefono = d.telefono || "";
+      estado.cuit = d.cuit || "";
+      estado.localidad = d.localidad || "";
+      estado.provincia = d.provincia || "";
+      estado.condicionIva = d.condicionIva || "";
       estado.fecha = d.fecha || "";
       estado.tipo = d.tipo || "PRESUPUESTO";
       estado.lineas = (d.lineas || []).map(function (l) {
@@ -1069,6 +1146,10 @@
     $("#cliente").value = estado.cliente;
     $("#direccion").value = estado.direccion;
     $("#telefono").value = estado.telefono;
+    $("#cuit").value = estado.cuit;
+    $("#localidad").value = estado.localidad;
+    $("#provincia").value = estado.provincia;
+    $("#condicion-iva").value = estado.condicionIva;
     elFecha.value = estado.fecha;
     marcarTipo(estado.tipo);
     recalcular();
@@ -1164,10 +1245,29 @@
     for (var i = 0; i < botones.length; i++) {
       botones[i].classList.toggle("is-active", botones[i].dataset.tipo === tipo);
     }
+    /* El remito lleva su propia serie: se pide un numero la primera vez que se
+     * pasa el documento a remito. */
+    if (esRemito() && !estado.numeroRemito && !reservandoRemito) {
+      reservandoRemito = true;
+      contadorRemito.reservar(function (n) {
+        reservandoRemito = false;
+        if (estado.numeroRemito) return;
+        estado.numeroRemito = n;
+        guardar(true);
+      });
+    }
   }
 
   function enlazarCabecera() {
-    [["#cliente", "cliente"], ["#direccion", "direccion"], ["#telefono", "telefono"]].forEach(function (par) {
+    [
+      ["#cliente", "cliente"],
+      ["#direccion", "direccion"],
+      ["#telefono", "telefono"],
+      ["#cuit", "cuit"],
+      ["#localidad", "localidad"],
+      ["#provincia", "provincia"],
+      ["#condicion-iva", "condicionIva"],
+    ].forEach(function (par) {
       var el = $(par[0]);
       el.addEventListener("input", function () {
         estado[par[1]] = el.value;
@@ -1195,9 +1295,15 @@
     if (!usaFirebase || !usuarioActual || ignorandoFirestore) return;
     try {
       db.collection("presupuestos").doc(presupuestoActivoId()).set({
+        numero: estado.numero,
+        numeroRemito: estado.numeroRemito,
         cliente: estado.cliente,
         direccion: estado.direccion,
         telefono: estado.telefono,
+        cuit: estado.cuit,
+        localidad: estado.localidad,
+        provincia: estado.provincia,
+        condicionIva: estado.condicionIva,
         fecha: estado.fecha,
         tipo: estado.tipo,
         lineas: estado.lineas,
@@ -1215,9 +1321,15 @@
       if (!doc.exists) return;
       var d = doc.data() || {};
       ignorandoFirestore = true;
+      estado.numero = d.numero || estado.numero || null;
+      estado.numeroRemito = d.numeroRemito || estado.numeroRemito || null;
       estado.cliente = d.cliente || "";
       estado.direccion = d.direccion || "";
       estado.telefono = d.telefono || "";
+      estado.cuit = d.cuit || "";
+      estado.localidad = d.localidad || "";
+      estado.provincia = d.provincia || "";
+      estado.condicionIva = d.condicionIva || "";
       estado.fecha = d.fecha || hoyISO();
       estado.tipo = d.tipo || "PRESUPUESTO";
       estado.lineas = (d.lineas || []).map(function (l) {
@@ -1231,6 +1343,10 @@
       $("#cliente").value = estado.cliente;
       $("#direccion").value = estado.direccion;
       $("#telefono").value = estado.telefono;
+      $("#cuit").value = estado.cuit;
+      $("#localidad").value = estado.localidad;
+      $("#provincia").value = estado.provincia;
+      $("#condicion-iva").value = estado.condicionIva;
       elFecha.value = estado.fecha;
       marcarTipo(estado.tipo);
       pintarTodo();
@@ -1274,20 +1390,28 @@
     return t === "" ? "-" : t;
   }
 
-  /* El dibujo vive en js/pdf-presupuesto.js, que no toca el DOM y tiene tests. */
+  /* El dibujo vive en js/pdf-presupuesto.js, que no toca el DOM y tiene tests.
+   * El remito usa otra maqueta: sin precios y con transporte. */
   function pdfDelPresupuesto() {
     var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDF || !window.TV_PDF) return null;
-    return window.TV_PDF.crear({
+    var datos = {
       jsPDF: jsPDF,
       logo: window.TV_LOGO_JPG,
       negocio: CAT.negocio,
       estado: estado,
+      numero: numeroDelTipo(),
       calc: CALC,
       pesos: TV.pesos,
       dato: datoCelda,
       fecha: fechaCompleta(estado.fecha),
-    });
+    };
+    if (esRemito() && window.TV_PDF.crearRemito) return window.TV_PDF.crearRemito(datos);
+    return window.TV_PDF.crear(datos);
+  }
+
+  function esRemito() {
+    return String(estado.tipo || "").toUpperCase() === "REMITO";
   }
 
   /* Número para un link wa.me. Si ya viene con país (54...) se respeta; si es
@@ -1313,7 +1437,9 @@
 
   /* Mensaje que acompaña al PDF en el chat. */
   function mensajeConPdf() {
-    return "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
+    return esRemito()
+      ? "Te paso el remito en PDF."
+      : "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
   }
 
   /* Envía el presupuesto: descarga el PDF y abre el chat del número directo.
@@ -1346,7 +1472,8 @@
       return;
     }
 
-    var nombre = "Presupuesto " + String(estado.cliente || "Maderas Victoria").trim() +
+    var nombre = (esRemito() ? "Remito " : "Presupuesto ") +
+      String(estado.cliente || "Maderas Victoria").trim() +
       " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
     nombre = nombre.replace(/[\\/:*?"<>|]/g, "-");
     var blob = doc.output("blob");
@@ -1385,14 +1512,25 @@
       escucharPresupuesto();
       escucharVentasYGastos();
     }
+    estado.numero = null;
+    estado.numeroRemito = null;
     estado.cliente = "";
     estado.direccion = "";
     estado.telefono = "";
+    estado.cuit = "";
+    estado.localidad = "";
+    estado.provincia = "";
+    estado.condicionIva = "";
     estado.fecha = hoyISO();
     estado.tipo = "PRESUPUESTO";
     estado.lineas = [nuevaLinea()];
     pintarTodo();
     guardar(true);
+    contadorPresupuesto.reservar(function (n) {
+      if (estado.numero) return;
+      estado.numero = n;
+      guardar(true);
+    });
     avisar("Presupuesto nuevo");
   }
 
@@ -2793,6 +2931,25 @@
     var habia = cargar();
     if (!estado.lineas.length) estado.lineas = [nuevaLinea()];
     if (!estado.fecha) estado.fecha = hoyISO();
+    /* Un presupuesto guardado antes de la numeracion automatica no tiene
+     * numero: se le asigna uno al abrirlo. */
+    if (!estado.numero) {
+      contadorPresupuesto.reservar(function (n) {
+        if (estado.numero) return;
+        estado.numero = n;
+        guardar(true);
+      });
+    }
+    /* Un remito guardado antes de la numeracion propia ya trae su tipo. */
+    if (esRemito() && !estado.numeroRemito && !reservandoRemito) {
+      reservandoRemito = true;
+      contadorRemito.reservar(function (n) {
+        reservandoRemito = false;
+        if (estado.numeroRemito) return;
+        estado.numeroRemito = n;
+        guardar(true);
+      });
+    }
 
     enlazarCabecera();
     pintarTodo();
