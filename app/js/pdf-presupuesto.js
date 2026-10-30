@@ -55,7 +55,7 @@
     doc.text("rollizo de eucalipto impregnado", M + 4, yTxt + 15.2);
 
     doc.setFontSize(6.6);
-    doc.text("Lareal Acceso Sur 7522 - Carrodilla - Luj\u00e1n de Cuyo - Mendoza", M + 4, yTxt + 19.6);
+    doc.text("Lateral Acceso Sur 7522 - Carrodilla - Luj\u00e1n de Cuyo - Mendoza", M + 4, yTxt + 19.6);
     doc.text(
       "maderasvictoria@gmail.com  \u00b7  Tel. " + (negocio.telefonos || []).join(" - "),
       M + 4,
