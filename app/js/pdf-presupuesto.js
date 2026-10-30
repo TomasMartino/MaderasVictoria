@@ -317,10 +317,10 @@
     campo("SE\u00d1OR", estado.cliente, M + 4, Y_CLI + 7, 104);
     campo("DIRECCI\u00d3N", estado.direccion, M + 4, Y_CLI + 17, 104);
     campo("LOCALIDAD", estado.localidad, M + 4, Y_CLI + 27, 104);
+    campo("PROVINCIA", estado.provincia, M + 4, Y_CLI + 37, 104);
     campo("TEL\u00c9FONO", estado.telefono, X_CLI + 4, Y_CLI + 7, 64);
     campo("CONDICI\u00d3N IVA", estado.condicionIva, X_CLI + 4, Y_CLI + 17, 64);
-    campo("PROVINCIA", estado.provincia, X_CLI + 4, Y_CLI + 27, 64);
-    campo("CUIT / CUIL", estado.cuit, X_CLI + 4, Y_CLI + 37, 64);
+    campo("CUIT / CUIL", estado.cuit, X_CLI + 4, Y_CLI + 27, 64);
 
     /* ---------- tabla de mercaderia ---------- */
     var cCant = { x: M + 2 };
