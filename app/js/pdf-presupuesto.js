@@ -20,48 +20,29 @@
   var IIBB = "650828";
   var CONDICION_IVA = "Responsable Inscripto";
 
-  function crearPdf(o) {
-    var jsPDF = o.jsPDF;
-    var doc = new jsPDF({ unit: "mm", format: "a4" });
-    var pesos = o.pesos;
-    var dato = o.dato;
-    var negocio = o.negocio || {};
-    var estado = o.estado || {};
-    var calc = o.calc;
-    var y;
-
-    /* ---------- membrete ----------
-     * Caja con tres partes, como el talonario de papel: a la izquierda el
-     * logo y los datos del negocio, en el medio la cruz que marca que el
-     * documento es un PRESUPUESTO, y a la derecha el titulo y la fecha. */
-    var Y_CAB = 12;
-    var ALTO_CAB = 60;
-    var X_DIV = M + 92;
-    var ANCHO_CRUZ = 18;
-    var X_DER = X_DIV + ANCHO_CRUZ;
-
+  /* Caja del membrete: rectangulo, divisor vertical, sello cuadrado arriba al
+   * medio y divisor del sello. La comparten el presupuesto y el remito. */
+  function cajaMembrete(doc, yCab, alto, xDiv, anchoSello) {
     doc.setTextColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
     doc.setDrawColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
     doc.setLineWidth(0.5);
-    doc.rect(M, Y_CAB, DER - M, ALTO_CAB);
-    doc.line(X_DIV, Y_CAB, X_DIV, Y_CAB + ALTO_CAB);
-    doc.rect(X_DIV, Y_CAB, ANCHO_CRUZ, ANCHO_CRUZ);
-    doc.line(X_DER, Y_CAB, X_DER, Y_CAB + ALTO_CAB);
+    doc.rect(M, yCab, DER - M, alto);
+    doc.line(xDiv, yCab, xDiv, yCab + alto);
+    doc.rect(xDiv, yCab, anchoSello, anchoSello);
+    doc.line(xDiv + anchoSello, yCab, xDiv + anchoSello, yCab + alto);
+  }
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("X", X_DIV + ANCHO_CRUZ / 2, Y_CAB + 12.3, { align: "center" });
-
-    /* logo + datos del negocio (columna izquierda) */
+  /* Logo, nombre, rubro, direccion y contacto (columna izquierda del membrete). */
+  function columnaNegocio(doc, negocio, logo, yCab) {
     var hayLogo = false;
-    if (o.logo) {
+    if (logo) {
       try {
-        doc.addImage(o.logo, "JPEG", M + 4, Y_CAB + 3, 32, 22.4);
+        doc.addImage(logo, "JPEG", M + 4, yCab + 3, 32, 22.4);
         hayLogo = true;
       } catch (e) {}
     }
 
-    var yTxt = hayLogo ? Y_CAB + 30 : Y_CAB + 10;
+    var yTxt = hayLogo ? yCab + 30 : yCab + 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text(String(negocio.nombre || "MADERAS VICTORIA").toUpperCase(), M + 4, yTxt);
@@ -80,6 +61,34 @@
       M + 4,
       yTxt + 23.2
     );
+  }
+
+  function crearPdf(o) {
+    var jsPDF = o.jsPDF;
+    var doc = new jsPDF({ unit: "mm", format: "a4" });
+    var pesos = o.pesos;
+    var dato = o.dato;
+    var negocio = o.negocio || {};
+    var estado = o.estado || {};
+    var calc = o.calc;
+    var y;
+
+    /* ---------- membrete ----------
+     * Caja con tres partes, como el talonario de papel: a la izquierda el
+     * logo y los datos del negocio, en el medio la cruz que marca que el
+     * documento es un PRESUPUESTO, y a la derecha el titulo y la fecha. */
+    var Y_CAB = 12;
+    var ALTO_CAB = 60;
+    var X_DIV = M + 92;
+    var ANCHO_SELLO = 18;
+
+    cajaMembrete(doc, Y_CAB, ALTO_CAB, X_DIV, ANCHO_SELLO);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("X", X_DIV + ANCHO_SELLO / 2, Y_CAB + 12.3, { align: "center" });
+
+    columnaNegocio(doc, negocio, o.logo, Y_CAB);
 
     /* titulo, numero y datos fiscales (columna derecha) */
     var titulo = "PRESUPUESTO";
@@ -120,6 +129,18 @@
       doc.setLineWidth(0.2);
       doc.line(c.x, y + 7, c.x + c.w, y + 7);
     });
+
+    /* segunda fila: CUIT / CUIL del cliente */
+    y += 12;
+    doc.setFontSize(6.5);
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text("CUIT / CUIL", M, y);
+    doc.setFontSize(10);
+    doc.setTextColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+    doc.text(String(estado.cuit || "").slice(0, 42), M, y + 5.5);
+    doc.setDrawColor(198, 185, 165);
+    doc.setLineWidth(0.2);
+    doc.line(M, y + 7, M + 64, y + 7);
 
     /* ---------- tabla ---------- */
     var cN = { x: M };
@@ -221,5 +242,148 @@
     return doc;
   }
 
-  root.TV_PDF = { crear: crearPdf };
+  /* Remito de entrega. Mismo membrete que el presupuesto, pero el sello dice
+   * "R", no lleva precios ni totales (un remito no es una factura), y suma la
+   * caja del destinatario y el bloque de transporte para completar a mano. */
+  function crearRemito(o) {
+    var jsPDF = o.jsPDF;
+    var doc = new jsPDF({ unit: "mm", format: "a4" });
+    var dato = o.dato;
+    var negocio = o.negocio || {};
+    var estado = o.estado || {};
+    var calc = o.calc;
+    var y;
+
+    var Y_CAB = 12;
+    var ALTO_CAB = 60;
+    var X_DIV = M + 92;
+    var ANCHO_SELLO = 18;
+
+    cajaMembrete(doc, Y_CAB, ALTO_CAB, X_DIV, ANCHO_SELLO);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("R", X_DIV + ANCHO_SELLO / 2, Y_CAB + 12.3, { align: "center" });
+
+    columnaNegocio(doc, negocio, o.logo, Y_CAB);
+
+    /* ---------- titulo, numero y datos fiscales ---------- */
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("REMITO", DER - 4, Y_CAB + 11, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.8);
+    doc.text("DOCUMENTO NO V\u00c1LIDO COMO FACTURA", DER - 4, Y_CAB + 15, { align: "right" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text("N\u00b0 " + String(o.numero || "-"), DER - 4, Y_CAB + 24, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text("Fecha: " + String(o.fecha || ""), DER - 4, Y_CAB + 30, { align: "right" });
+    doc.text("CUIT: " + (negocio.cuit || CUIT), DER - 4, Y_CAB + 35, { align: "right" });
+    doc.text("Ing. Brutos: " + (negocio.iibb || IIBB), DER - 4, Y_CAB + 40, { align: "right" });
+    doc.text("Cond. IVA: " + (negocio.condicionIva || CONDICION_IVA), DER - 4, Y_CAB + 45, { align: "right" });
+
+    /* ---------- caja del destinatario ---------- */
+    var Y_CLI = Y_CAB + ALTO_CAB + 6;
+    var ALTO_CLI = 44;
+    var X_CLI = M + 112;
+
+    doc.setDrawColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+    doc.setLineWidth(0.4);
+    doc.rect(M, Y_CLI, DER - M, ALTO_CLI);
+    doc.line(X_CLI, Y_CLI, X_CLI, Y_CLI + ALTO_CLI);
+
+    /* Un campo con etiqueta chica, valor y renglon para escribir. */
+    function campo(etiqueta, valor, x, yy, ancho) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6);
+      doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+      doc.text(etiqueta, x, yy);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+      doc.text(String(valor == null ? "" : valor).slice(0, 52), x, yy + 4.5);
+
+      doc.setDrawColor(198, 185, 165);
+      doc.setLineWidth(0.2);
+      doc.line(x, yy + 6, x + ancho, yy + 6);
+    }
+
+    campo("SE\u00d1OR", estado.cliente, M + 4, Y_CLI + 7, 104);
+    campo("DIRECCI\u00d3N", estado.direccion, M + 4, Y_CLI + 17, 104);
+    campo("LOCALIDAD", estado.localidad, M + 4, Y_CLI + 27, 104);
+    campo("TEL\u00c9FONO", estado.telefono, X_CLI + 4, Y_CLI + 7, 64);
+    campo("CONDICI\u00d3N IVA", estado.condicionIva, X_CLI + 4, Y_CLI + 17, 64);
+    campo("PROVINCIA", estado.provincia, X_CLI + 4, Y_CLI + 27, 64);
+    campo("CUIT / CUIL", estado.cuit, X_CLI + 4, Y_CLI + 37, 64);
+
+    /* ---------- tabla de mercaderia ---------- */
+    var cCant = { x: M + 2 };
+    var cArt = { x: M + 34, w: 105 };
+    var cLargo = { der: DER - 2 };
+
+    function encabezadoTabla(yy) {
+      doc.setDrawColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+      doc.setLineWidth(0.4);
+      doc.line(M, yy - 4, DER, yy - 4);
+      doc.line(M, yy + 2, DER, yy + 2);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+      doc.text("CANTIDAD", cCant.x, yy);
+      doc.text("ARTICULO", cArt.x, yy);
+      doc.text("LARGO REAL", cLargo.der, yy, { align: "right" });
+      return yy + 8;
+    }
+
+    y = encabezadoTabla(Y_CLI + ALTO_CLI + 10);
+
+    var lineas = estado.lineas || [];
+    for (var i = 0; i < lineas.length; i++) {
+      var l = lineas[i];
+      var c = calc.linea(l);
+      if (!c || !c.producto) continue;
+
+      var nombre = String(c.producto.nombre || "");
+      var trozos = doc.splitTextToSize(nombre, cArt.w);
+      var alto = Math.max(6, trozos.length * 4.2 + 2);
+
+      if (y + alto > 250) {
+        doc.addPage();
+        y = encabezadoTabla(18);
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+      doc.text(String(l.cantidad == null ? "" : l.cantidad), cCant.x, y + 3.6);
+      doc.text(trozos, cArt.x, y + 3.6);
+      doc.text(dato(l.largo), cLargo.der, y + 3.6, { align: "right" });
+
+      y += alto;
+      doc.setDrawColor(COLOR_LINEA[0], COLOR_LINEA[1], COLOR_LINEA[2]);
+      doc.setLineWidth(0.2);
+      doc.line(M, y, DER, y);
+    }
+
+    /* ---------- pie ---------- */
+    doc.setDrawColor(COLOR_LINEA[0], COLOR_LINEA[1], COLOR_LINEA[2]);
+    doc.setLineWidth(0.2);
+    doc.line(M, 282, DER, 282);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text(String(negocio.nombre || "MADERAS VICTORIA").toUpperCase(), M, 286.5);
+    doc.setFont("helvetica", "normal");
+    doc.text("Tel. " + (negocio.telefonos || []).join(" - "), DER, 286.5, { align: "right" });
+
+    return doc;
+  }
+
+  root.TV_PDF = { crear: crearPdf, crearRemito: crearRemito };
 })(typeof window !== "undefined" ? window : this);
