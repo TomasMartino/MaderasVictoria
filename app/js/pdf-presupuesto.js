@@ -15,6 +15,11 @@
   var COLOR_MUTED = [110, 91, 71];
   var COLOR_LINEA = [225, 213, 194];
 
+  /* Datos fiscales del negocio. Se pueden pisar desde negocio.cuit / negocio.iibb. */
+  var CUIT = "20-40220967-5";
+  var IIBB = "650828";
+  var CONDICION_IVA = "Responsable Inscripto";
+
   function crearPdf(o) {
     var jsPDF = o.jsPDF;
     var doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -76,14 +81,25 @@
       yTxt + 23.2
     );
 
-    /* titulo y fecha (columna derecha) */
+    /* titulo, numero y datos fiscales (columna derecha) */
+    var titulo = "PRESUPUESTO";
+    if (o.numero) titulo += " N\u00b0 " + o.numero;
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("PRESUPUESTO", DER - 4, Y_CAB + 12, { align: "right" });
+    doc.text(titulo, DER - 4, Y_CAB + 12, { align: "right" });
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.text("Fecha de Emisi\u00f3n: " + String(o.fecha || ""), DER - 4, Y_CAB + 22, { align: "right" });
+    doc.text("Fecha de Emisi\u00f3n: " + String(o.fecha || ""), DER - 4, Y_CAB + 21, { align: "right" });
+    doc.text("CUIT: " + (negocio.cuit || CUIT), DER - 4, Y_CAB + 28, { align: "right" });
+    doc.text("Ing. Brutos: " + (negocio.iibb || IIBB), DER - 4, Y_CAB + 33, { align: "right" });
+    doc.text(
+      "Condici\u00f3n IVA: " + (negocio.condicionIva || CONDICION_IVA),
+      DER - 4,
+      Y_CAB + 38,
+      { align: "right" }
+    );
 
     /* ---------- datos del cliente ---------- */
     y = Y_CAB + ALTO_CAB + 8;
