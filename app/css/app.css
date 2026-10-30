@@ -234,10 +234,10 @@ button, input, select, textarea, output {
 
 .doc-head__cliente {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
-  gap: 6px 22px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 18px;
   flex: 1;
-  max-width: 620px;
+  max-width: 660px;
 }
 
 .doc-head__meta {
