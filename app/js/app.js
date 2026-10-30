@@ -1447,6 +1447,46 @@
       : "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
   }
 
+  /* Nombre del archivo: Remito/Presupuesto + cliente + fecha. */
+  function nombreDelPdf() {
+    var nombre = (esRemito() ? "Remito " : "Presupuesto ") +
+      String(estado.cliente || "Maderas Victoria").trim() +
+      " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
+    return nombre.replace(/[\\/:*?"<>|]/g, "-");
+  }
+
+  /* Imprimir usa el MISMO PDF que se manda por WhatsApp: así el papel y el
+   * archivo no pueden quedar con formatos distintos. Antes imprimía la hoja
+   * HTML vieja. */
+  function imprimirPresupuesto() {
+    var res = recalcular();
+    if (res.avisos.length) {
+      avisar("Revisá las líneas marcadas antes de imprimir");
+      return;
+    }
+    if (!res.validas) {
+      avisar("Agregá al menos un producto con cantidad");
+      return;
+    }
+
+    var doc = pdfDelPresupuesto();
+    if (!doc) {
+      /* Sin la librería del PDF no hay otra cosa que imprimir. */
+      window.print();
+      return;
+    }
+
+    var blob = doc.output("blob");
+    var url = URL.createObjectURL(blob);
+    var ventana = window.open(url, "_blank", "noopener");
+    if (!ventana) {
+      bajarArchivo(blob, nombreDelPdf());
+      avisar("PDF descargado: abrilo para imprimir");
+    }
+    /* Se libera recién cuando el visor ya lo abrió. */
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }
+
   /* Envía el presupuesto: descarga el PDF y abre el chat del número directo.
    * WhatsApp no deja adjuntar archivos por link (wa.me solo lleva texto), así
    * que el PDF se baja y se adjunta en el chat que ya queda abierto. */
@@ -1477,10 +1517,7 @@
       return;
     }
 
-    var nombre = (esRemito() ? "Remito " : "Presupuesto ") +
-      String(estado.cliente || "Maderas Victoria").trim() +
-      " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
-    nombre = nombre.replace(/[\\/:*?"<>|]/g, "-");
+    var nombre = nombreDelPdf();
     var blob = doc.output("blob");
 
     /* Sin teléfono no hay chat al que ir: se abre la hoja de compartir para
@@ -3434,7 +3471,7 @@
     }
 
     $("#agregar").addEventListener("click", agregarLinea);
-    $("#imprimir").addEventListener("click", function () { window.print(); });
+    $("#imprimir").addEventListener("click", imprimirPresupuesto);
     $("#whatsapp").addEventListener("click", enviarPresupuesto);
     $("#guardar").addEventListener("click", function () {
       guardar(true);
