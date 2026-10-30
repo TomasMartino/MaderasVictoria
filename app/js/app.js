@@ -1238,6 +1238,39 @@
     guardar(false);
   }
 
+  /* ---------- tema claro / oscuro ---------- */
+
+  var CLAVE_TEMA = "tiovity.tema.v1";
+
+  function temaActual() {
+    return document.documentElement.getAttribute("data-tema") === "oscuro" ? "oscuro" : "claro";
+  }
+
+  /* Aplica el tema y sincroniza el botón del rail. */
+  function aplicarTema(tema, recordar) {
+    var oscuro = tema === "oscuro";
+    document.documentElement.setAttribute("data-tema", oscuro ? "oscuro" : "claro");
+
+    var btn = $("#tema");
+    if (btn) {
+      btn.setAttribute("aria-pressed", oscuro ? "true" : "false");
+      var texto = $("#tema-texto");
+      if (texto) texto.textContent = oscuro ? "Tema claro" : "Tema oscuro";
+      var luna = btn.querySelector(".tema__icono--luna");
+      var sol = btn.querySelector(".tema__icono--sol");
+      if (luna) luna.hidden = oscuro;
+      if (sol) sol.hidden = !oscuro;
+    }
+
+    if (recordar) {
+      try { localStorage.setItem(CLAVE_TEMA, oscuro ? "oscuro" : "claro"); } catch (e) {}
+    }
+  }
+
+  function alternarTema() {
+    aplicarTema(temaActual() === "oscuro" ? "claro" : "oscuro", true);
+  }
+
   /* ---------- cabecera ---------- */
 
   function marcarTipo(tipo) {
@@ -3480,6 +3513,10 @@
     $("#nuevo").addEventListener("click", nuevo);
     if ($("#nota-registrar")) {
       $("#nota-registrar").addEventListener("click", registrarNotaDePedido);
+    }
+    if ($("#tema")) {
+      aplicarTema(temaActual(), false);
+      $("#tema").addEventListener("click", alternarTema);
     }
 
     document.querySelectorAll(".navbtn").forEach(function (b) {

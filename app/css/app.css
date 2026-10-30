@@ -1314,3 +1314,57 @@ button, input, select, textarea, output {
 .dup-fila--queda { color: #3E7D43; font-weight: 600; }
 .dup-fila--sale { color: var(--rojo-osc); }
 .modal__error { margin: 8px 0 0; color: var(--rojo); font-size: 12.5px; }
+
+/* ================= TEMA OSCURO ================= */
+
+html[data-tema="oscuro"] {
+  --rojo: #F0454A;
+  --rojo-osc: #FF8A8D;
+  --tinta: #EFE6DA;
+  --tinta-2: #A99B8B;
+  --madera: #C79A6B;
+  --arena: #EEBB81;
+  --papel: #17110D;
+  --papel-2: #221A14;
+  --linea: #3A2D24;
+  --blanco: #1F1813;
+  --verde: #7BD08F;
+  --ambar: #E8B45C;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Boton del rail */
+#tema { margin-top: 2px; }
+.tema__icono[hidden] { display: none; }
+
+/* Superficies con color fijo que el tema claro tenia en crema */
+html[data-tema="oscuro"] .aviso {
+  border-color: #4A3A22;
+  background: #2A2013;
+  color: var(--ambar);
+}
+
+html[data-tema="oscuro"] .prod-reporte {
+  border-color: #2C4433;
+  background: #17251C;
+  color: var(--verde);
+}
+
+html[data-tema="oscuro"] .prod__marca--gris { background: #2B221A; color: var(--tinta-2); }
+html[data-tema="oscuro"] .prod__marca--ambar { background: #2A2013; color: var(--ambar); }
+html[data-tema="oscuro"] .prod__marca--rojo { background: #33191A; color: var(--rojo-osc); }
+
+html[data-tema="oscuro"] .modal__error { background: #33191A; color: var(--rojo-osc); }
+html[data-tema="oscuro"] .campo__input--mal { background: #2A1416; }
+html[data-tema="oscuro"] .btn--peligro:hover { background: #2A1416; }
+
+html[data-tema="oscuro"] .nota__estado--pendiente { background: #2A2013; border-color: #5A4622; color: #E8B45C; }
+html[data-tema="oscuro"] .nota__estado--senado { background: #141E2A; border-color: #2C4258; color: #8FB4DE; }
+html[data-tema="oscuro"] .nota__estado--pagado { background: #14251A; border-color: #2C4433; color: #7BD08F; }
+html[data-tema="oscuro"] .nota__estado--baja { background: #2A1416; border-color: #5A2A2D; color: var(--rojo-osc); }
+
+html[data-tema="oscuro"] .excel-cambio__estado--ok,
+html[data-tema="oscuro"] .dup-fila--queda { color: var(--verde); }
+
+html[data-tema="oscuro"] .prod-drop__lista { background: var(--papel-2); }
+html[data-tema="oscuro"] .toast { background: var(--papel-2); color: var(--tinta); border: 1px solid var(--linea); }
