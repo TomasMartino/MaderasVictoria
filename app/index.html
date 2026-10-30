@@ -34,6 +34,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11z"/><path d="M9 20v-6h6v6"/></svg>
         <span>Ventas</span>
       </button>
+      <button class="navbtn" data-view="notas">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        <span>Notas</span>
+      </button>
       <button class="navbtn" data-view="balance">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 20V11M12 20V5M17 20v-6"/></svg>
         <span>Balance</span>
@@ -330,6 +334,70 @@
         </div>
       </section>
 
+      <!-- ============ NOTAS DE PEDIDO ============ -->
+      <section id="view-notas" class="view is-hidden">
+        <div class="prod-panel">
+          <header class="prod-head">
+            <div class="prod-head__titulo">
+              <h1>Notas de pedido</h1>
+              <p class="prod-resumen" id="notas-resumen"></p>
+            </div>
+          </header>
+
+          <p class="prod-pie">
+            La nota entra sola cuando generás un documento con el tipo «Nota de pedido».
+            Acá marcás si está pagada, si dejaron una seña o si se dio de baja.
+            La seña la escribís vos: el faltante se calcula solo.
+          </p>
+
+          <div class="notas-filtros">
+            <div class="tipos tipos--start" id="notas-filtro" role="group" aria-label="Filtrar notas">
+              <button class="tipo is-active" data-estado="">Todas</button>
+              <button class="tipo" data-estado="pendiente">Pendientes</button>
+              <button class="tipo" data-estado="senado">Señadas</button>
+              <button class="tipo" data-estado="pagado">Pagadas</button>
+              <button class="tipo" data-estado="baja">Dadas de baja</button>
+            </div>
+          </div>
+
+          <div id="nota-form" class="modal" hidden>
+            <form class="modal__caja" id="form-nota" role="dialog" aria-modal="true" aria-labelledby="nota-form-titulo" novalidate>
+              <h2 class="modal__titulo" id="nota-form-titulo">Registrar seña</h2>
+              <p class="campo__ayuda" id="nota-form-detalle" style="margin:0 0 14px;"></p>
+              <input type="hidden" id="nota-form-id">
+              <input type="hidden" id="nota-form-modo">
+              <label class="campo" id="nota-form-monto-campo">
+                <span class="campo__label">Monto de la seña</span>
+                <input id="nota-form-monto" class="campo__input" type="text" inputmode="decimal" placeholder="0">
+              </label>
+              <label class="campo">
+                <span class="campo__label">Medio de pago</span>
+                <select id="nota-form-medio" class="campo__input">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                </select>
+              </label>
+              <label class="check">
+                <input type="checkbox" id="nota-form-cargar" checked>
+                <span>
+                  <strong>Cargar como venta diaria</strong>
+                  <small id="nota-form-cargar-ayuda">Suma en ventas y en el balance.</small>
+                </span>
+              </label>
+              <p class="modal__error" id="nota-form-error" hidden></p>
+              <div class="modal__pie">
+                <button type="button" class="btn btn--ghost" id="nota-form-cancelar">Cancelar</button>
+                <span class="modal__espacio"></span>
+                <button type="submit" class="btn btn--brand" id="nota-form-ok">Guardar</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="notas-lista"></div>
+        </div>
+      </section>
+
       <!-- ============ BALANCE ============ -->
       <section id="view-balance" class="view is-hidden">
         <div class="prod-panel">
@@ -429,6 +497,7 @@
         <button id="guardar" class="btn btn--ghost" type="button">Guardar</button>
         <button id="imprimir" class="btn btn--ghost" type="button"><span class="solo-ancho">Imprimir / </span>PDF</button>
         <button id="whatsapp" class="btn btn--brand" type="button"><span class="solo-ancho">Enviar por </span>WhatsApp</button>
+        <button id="nota-registrar" class="btn btn--brand" type="button" hidden>Registrar nota</button>
       </div>
     </footer>
   </div>
@@ -577,6 +646,7 @@
 <script src="js/planilla-ventas.js"></script>
 <script src="js/planilla-balance.js"></script>
 <script src="js/balance.js"></script>
+<script src="js/notas.js"></script>
 <script src="js/pdf-presupuesto.js"></script>
 <script src="js/app.js"></script>
 </body>

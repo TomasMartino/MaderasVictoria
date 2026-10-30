@@ -1261,6 +1261,41 @@ button, input, select, textarea, output {
 .excel-cambio__estado--ok { color: #3E7D43; }
 .btn--mini { padding: 3px 10px; font-size: 12px; border-radius: 8px; }
 
+/* Notas de pedido */
+.notas-filtros { margin: 0 0 12px; }
+.nota-fila {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--linea);
+}
+.nota-fila:last-child { border-bottom: 0; }
+.nota-fila--baja { opacity: 0.55; }
+.nota__datos { flex: 1 1 220px; min-width: 180px; }
+.nota__nombre { font-weight: 700; font-size: 14px; color: var(--tinta); }
+.nota__meta { display: block; font-size: 11.5px; color: var(--tinta-2); margin-top: 2px; }
+.nota__importes { flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; }
+.nota__total { display: block; font-size: 14px; font-weight: 700; color: var(--tinta); }
+.nota__detalle-importe { display: block; font-size: 11.5px; color: var(--tinta-2); margin-top: 2px; }
+.nota__estado {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--linea);
+  color: var(--tinta-2);
+}
+.nota__estado--pendiente { border-color: #E0C58A; color: #8A6A1E; background: #FFF9EC; }
+.nota__estado--senado { border-color: #A9C4E4; color: #24507F; background: #F2F7FD; }
+.nota__estado--pagado { border-color: #A9D3AE; color: #2F6B35; background: #F3FAF4; }
+.nota__estado--baja { border-color: #E3B6B8; color: var(--rojo-osc); background: #FDF1F1; }
+.nota__acciones { display: flex; gap: 6px; flex-wrap: wrap; flex: 0 0 auto; }
+
 /* Revisar duplicados */
 .dup__ayuda { margin: 0 0 10px; font-size: 12.5px; color: var(--tinta-2); line-height: 1.45; }
 .dup__resumen { margin: 0 0 8px; font-size: 13px; color: var(--tinta-2); }

@@ -150,6 +150,10 @@
 
   var ventas = [];
   var gastos = [];
+  var notas = [];
+  var escuchandoNotas = false;
+  var suscripcionNotas = null;
+  var filtroNotas = { estado: "" };
 
   var proximoId = 1;
   var guardarTimer = null;
@@ -251,12 +255,18 @@
 
   /* ---------- ventas y gastos (etapa 2) ---------- */
 
-  /* Carga una venta en Firestore y en el estado local. */
-  function guardarVenta(venta) {
+  /* Carga una venta en Firestore y en el estado local. `listo` (opcional) se
+   * llama con la venta ya guardada, para poder enlazarla desde otro lado
+   * (por ejemplo la nota de pedido necesita el id). */
+  function guardarVenta(venta, listo) {
+    function cerrar() {
+      if (typeof listo === "function") listo(venta);
+    }
     if (!usaFirebase || !usuarioActual) {
       /* modo local */
       ventas.push(venta);
       guardarVentasLocales();
+      cerrar();
       return;
     }
     try {
@@ -280,6 +290,7 @@
           pintarVentas();
           pintarBalance();
         }
+        cerrar();
       }).catch(function (err) {
         /* Si la subida a la nube falla, al menos la venta queda visible acá */
         ventas.push(venta);
@@ -287,10 +298,12 @@
         pintarVentas();
         pintarBalance();
         avisar("La venta no se subió a la nube: quedó en este equipo");
+        cerrar();
       });
     } catch (e) {
       ventas.push(venta);
       guardarVentasLocales();
+      cerrar();
     }
   }
 
@@ -756,9 +769,11 @@
     if (suscripcionVentas) { suscripcionVentas(); suscripcionVentas = null; }
     if (suscripcionGastos) { suscripcionGastos(); suscripcionGastos = null; }
     if (suscripcionCatalogo) { suscripcionCatalogo(); suscripcionCatalogo = null; }
+    if (suscripcionNotas) { suscripcionNotas(); suscripcionNotas = null; }
     escuchandoPresupuesto = false;
     escuchandoVentasGastos = false;
     escuchandoCatalogo = false;
+    escuchandoNotas = false;
   }
 
   /* Calcula el balance en un rango de fechas: ventas suman, gastos restan. */
@@ -1219,6 +1234,10 @@
     for (var i = 0; i < botones.length; i++) {
       botones[i].classList.toggle("is-active", botones[i].dataset.tipo === tipo);
     }
+    /* El botón de registrar sólo existe para las notas de pedido. */
+    var btnNota = $("#nota-registrar");
+    if (btnNota) btnNota.hidden = !esNotaDePedido();
+
     /* El remito lleva su propia serie: se pide un numero la primera vez que se
      * pasa el documento a remito. */
     if (esRemito() && !estado.numeroRemito && !reservandoRemito) {
@@ -2725,6 +2744,439 @@
     });
   }
 
+  /* ================= NOTAS DE PEDIDO ================= */
+
+  var NT = window.TV_NOTAS;
+  var CLAVE_NOTAS = "tiovity.notas.v1";
+  var elNotasLista = $("#notas-lista");
+  var elNotasResumen = $("#notas-resumen");
+
+  function esNotaDePedido() {
+    return String(estado.tipo || "").toUpperCase() === "NOTA DE PEDIDO";
+  }
+
+  function guardarNotasLocales() {
+    try {
+      localStorage.setItem(CLAVE_NOTAS, JSON.stringify({ version: 1, notas: notas }));
+    } catch (e) {}
+  }
+
+  function cargarNotasLocales() {
+    try {
+      var crudo = localStorage.getItem(CLAVE_NOTAS);
+      if (crudo) {
+        var d = JSON.parse(crudo);
+        if (d && Array.isArray(d.notas)) notas = d.notas;
+      }
+    } catch (e) {}
+  }
+
+  function notaPorId(id) {
+    return notas.find(function (n) { return n.id === id; });
+  }
+
+  /* Carga una nota nueva. `listo` recibe la nota con su id ya puesto. */
+  function guardarNota(nota, listo) {
+    function cerrar() {
+      guardarNotasLocales();
+      pintarNotas();
+      if (typeof listo === "function") listo(nota);
+    }
+    if (!usaFirebase || !usuarioActual) {
+      nota.id = "n" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      notas.push(nota);
+      cerrar();
+      return;
+    }
+    try {
+      db.collection("notas").add({
+        numero: nota.numero == null ? null : nota.numero,
+        cliente: nota.cliente || "",
+        telefono: nota.telefono || "",
+        fecha: nota.fecha || "",
+        total: nota.total || 0,
+        sena: nota.sena || 0,
+        medioSena: nota.medioSena || "",
+        medioFinal: nota.medioFinal || "",
+        estado: nota.estado || "pendiente",
+        ventaId: nota.ventaId || null,
+        creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+      }).then(function (ref) {
+        nota.id = ref.id;
+        if (!notas.some(function (x) { return x.id === ref.id; })) notas.push(nota);
+        cerrar();
+      }).catch(function () {
+        nota.id = "n" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        notas.push(nota);
+        avisar("La nota no se subió a la nube: quedó en este equipo");
+        cerrar();
+      });
+    } catch (e) {
+      nota.id = "n" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      notas.push(nota);
+      cerrar();
+    }
+  }
+
+  function editarNota(id, campos) {
+    var n = notaPorId(id);
+    if (!n) return;
+    Object.keys(campos || {}).forEach(function (k) { n[k] = campos[k]; });
+    guardarNotasLocales();
+    pintarNotas();
+    if (!usaFirebase || !usuarioActual) return;
+    try {
+      db.collection("notas").doc(id).update(campos).catch(function () {
+        avisar("La nota no se guardó en la nube: quedó en este equipo");
+      });
+    } catch (e) {}
+  }
+
+  function escucharNotas() {
+    if (!usaFirebase || !usuarioActual || escuchandoNotas) return;
+    escuchandoNotas = true;
+    suscripcionNotas = db.collection("notas").onSnapshot(function (snap) {
+      notas = snap.docs.map(function (doc) {
+        var d = doc.data() || {};
+        return {
+          id: doc.id,
+          numero: d.numero == null ? null : d.numero,
+          cliente: d.cliente || "",
+          telefono: d.telefono || "",
+          fecha: d.fecha || "",
+          total: Number(d.total) || 0,
+          sena: Number(d.sena) || 0,
+          medioSena: d.medioSena || "",
+          medioFinal: d.medioFinal || "",
+          estado: d.estado || "pendiente",
+          ventaId: d.ventaId || null,
+        };
+      });
+      guardarNotasLocales();
+      pintarNotas();
+    }, function (err) {
+      avisar("Notas: no se pudo sincronizar (" + (err.message || err.code || "error") + ")");
+    });
+  }
+
+  /* Al generar una nota de pedido, se registra acá. Si ese mismo documento ya
+   * estaba registrado (mismo número), se actualiza y no se duplica. */
+  function registrarNotaDePedido() {
+    if (!esNotaDePedido() || !NT) return;
+    var res = CALC.resumen(estado.lineas);
+    var total = Math.round((Number(res.total) || 0) * 100) / 100;
+    if (!(total > 0)) return;
+
+    var existente = null;
+    if (estado.numero != null) {
+      for (var i = 0; i < notas.length; i++) {
+        if (notas[i].numero != null && String(notas[i].numero) === String(estado.numero)) {
+          existente = notas[i];
+          break;
+        }
+      }
+    }
+
+    if (existente) {
+      editarNota(existente.id, {
+        cliente: estado.cliente || "",
+        telefono: estado.telefono || "",
+        fecha: estado.fecha || "",
+        total: total,
+      });
+      avisar("Nota de pedido actualizada");
+      return;
+    }
+
+    guardarNota({
+      numero: estado.numero == null ? null : estado.numero,
+      cliente: estado.cliente || "",
+      telefono: estado.telefono || "",
+      fecha: estado.fecha || "",
+      total: total,
+      sena: 0,
+      estado: "pendiente",
+      ventaId: null,
+    }, function () {
+      avisar("Nota de pedido registrada");
+    });
+  }
+
+  function pintarNotas() {
+    if (!elNotasLista || !NT) return;
+
+    var res = NT.resumen(notas);
+    if (elNotasResumen) {
+      elNotasResumen.innerHTML =
+        '<span>' + res.total + ' nota' + (res.total === 1 ? '' : 's') + '</span>' +
+        '<i aria-hidden="true">·</i><span>Por cobrar: ' + TV.pesos(res.porCobrar) + '</span>' +
+        '<i aria-hidden="true">·</i><span>Cobrado: ' + TV.pesos(res.cobrado) + '</span>';
+    }
+
+    var visibles = notas.filter(function (n) {
+      return !filtroNotas.estado || n.estado === filtroNotas.estado;
+    });
+
+    if (!visibles.length) {
+      elNotasLista.innerHTML = '<p class="prod-vacio">' +
+        (notas.length ? "No hay notas con ese estado." : "Todavía no generaste ninguna nota de pedido.") +
+        '</p>';
+      return;
+    }
+
+    visibles = visibles.slice().sort(function (a, b) {
+      return String(b.fecha || "").localeCompare(String(a.fecha || ""));
+    });
+
+    elNotasLista.innerHTML = visibles.map(function (n) {
+      var falta = NT.restante(n);
+      var detalleImporte = n.estado === "senado"
+        ? "Seña " + TV.pesos(n.sena) + " · faltan " + TV.pesos(falta)
+        : n.estado === "pagado"
+          ? "Cobrado"
+          : n.estado === "baja"
+            ? "Sin efecto"
+            : "Sin seña · faltan " + TV.pesos(n.total);
+
+      var acciones = '';
+      if (n.estado !== "pagado") {
+        acciones += '<button class="btn btn--brand btn--mini btn-nota-pagar" type="button" data-id="' + escapar(n.id) + '">Pagado</button>';
+      }
+      if (n.estado !== "pagado" && n.estado !== "baja") {
+        acciones += '<button class="btn btn--ghost btn--mini btn-nota-senar" type="button" data-id="' + escapar(n.id) + '">Seña</button>';
+      }
+      if (n.estado !== "baja") {
+        acciones += '<button class="btn btn--peligro btn--mini btn-nota-baja" type="button" data-id="' + escapar(n.id) + '">Dar de baja</button>';
+      }
+
+      return '<div class="nota-fila' + (n.estado === "baja" ? ' nota-fila--baja' : '') + '">' +
+        '<div class="nota__datos">' +
+          '<div class="nota__nombre">' + escapar(NT.nombreCliente(n)) + '</div>' +
+          '<span class="nota__meta">' + escapar(n.fecha || "sin fecha") +
+            (n.numero != null ? ' · N° ' + escapar(String(n.numero)) : '') +
+            (n.telefono ? ' · ' + escapar(n.telefono) : '') +
+          '</span>' +
+        '</div>' +
+        '<div class="nota__importes">' +
+          '<span class="nota__total">' + TV.pesos(n.total) + '</span>' +
+          '<span class="nota__detalle-importe">' + detalleImporte + '</span>' +
+        '</div>' +
+        '<span class="nota__estado nota__estado--' + escapar(n.estado) + '">' +
+          escapar(NT.estadoTexto(n.estado)) +
+        '</span>' +
+        '<div class="nota__acciones">' + acciones + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  /* Venta de la nota: si ya existe (la seña) se edita; si no, se crea.
+   * Una sola venta, con el medio de pago que se elija en ese momento. */
+  function ventaDeNota(n, monto, finalizada, medio, listo) {
+    var detalle = NT.etiquetaVenta(n, finalizada);
+    if (n.ventaId) {
+      editarVenta(n.ventaId, {
+        monto: monto,
+        detalle: detalle,
+        fecha: n.fecha,
+        medioPago: medio || "Efectivo",
+      });
+      if (typeof listo === "function") listo(n.ventaId);
+      return;
+    }
+    guardarVenta({
+      fecha: n.fecha,
+      monto: monto,
+      medioPago: medio || "Efectivo",
+      detalle: detalle,
+    }, function (v) {
+      if (typeof listo === "function") listo(v.id || null);
+    });
+  }
+
+  /* ---------- modal de seña / pago ---------- */
+
+  var elNotaForm = $("#nota-form");
+  var elNotaFormId = $("#nota-form-id");
+  var elNotaFormModo = $("#nota-form-modo");
+  var elNotaFormTitulo = $("#nota-form-titulo");
+  var elNotaFormDetalle = $("#nota-form-detalle");
+  var elNotaFormMonto = $("#nota-form-monto");
+  var elNotaFormMontoCampo = $("#nota-form-monto-campo");
+  var elNotaFormMedio = $("#nota-form-medio");
+  var elNotaFormCargar = $("#nota-form-cargar");
+  var elNotaFormCargarAyuda = $("#nota-form-cargar-ayuda");
+  var elNotaFormError = $("#nota-form-error");
+  var elNotaFormOk = $("#nota-form-ok");
+
+  function abrirModalNota(id, modo) {
+    var n = notaPorId(id);
+    if (!n || !elNotaForm) return;
+    if (n.estado === "pagado" || n.estado === "baja") return;
+
+    var conVenta = !!n.ventaId;
+
+    elNotaFormId.value = id;
+    elNotaFormModo.value = modo;
+    elNotaFormError.hidden = true;
+    elNotaFormMonto.classList.remove("campo__input--mal");
+
+    if (modo === "senar") {
+      elNotaFormTitulo.textContent = "Registrar seña";
+      elNotaFormDetalle.textContent =
+        NT.nombreCliente(n) + " · total " + TV.pesos(n.total) +
+        (n.sena ? " · ya señalado " + TV.pesos(n.sena) : "");
+      elNotaFormMontoCampo.hidden = false;
+      elNotaFormMonto.value = n.sena ? String(n.sena) : "";
+      elNotaFormMedio.value = n.medioSena || "Efectivo";
+      elNotaFormCargar.checked = true;
+      elNotaFormCargar.disabled = false;
+      elNotaFormCargarAyuda.textContent =
+        "Queda como «" + NT.etiquetaVenta(n, false) + "» y suma en ventas y balance.";
+    } else {
+      elNotaFormTitulo.textContent = "Marcar como pagada";
+      elNotaFormDetalle.textContent = conVenta
+        ? NT.nombreCliente(n) + " · la venta de la seña pasa a una sola venta de " +
+          TV.pesos(n.total) + " («" + NT.etiquetaVenta(n, true) + "»)."
+        : NT.nombreCliente(n) + " · total " + TV.pesos(n.total);
+      elNotaFormMontoCampo.hidden = true;
+      elNotaFormMedio.value = n.medioFinal || n.medioSena || "Efectivo";
+      elNotaFormCargar.checked = true;
+      elNotaFormCargar.disabled = conVenta;
+      elNotaFormCargarAyuda.textContent = conVenta
+        ? "Se actualiza la venta que ya existe: no se duplica."
+        : "Suma en ventas y en el balance.";
+    }
+
+    elNotaForm.hidden = false;
+    setTimeout(function () {
+      if (modo === "senar") elNotaFormMonto.focus();
+      else elNotaFormOk.focus();
+    }, 30);
+  }
+
+  function cerrarModalNota() {
+    if (elNotaForm) elNotaForm.hidden = true;
+  }
+
+  function confirmarModalNota(ev) {
+    ev.preventDefault();
+    var id = elNotaFormId.value;
+    var modo = elNotaFormModo.value;
+    var n = notaPorId(id);
+    if (!n) return;
+
+    var medio = elNotaFormMedio.value || "Efectivo";
+    var cargar = elNotaFormCargar.checked;
+
+    function error(msg) {
+      elNotaFormError.hidden = false;
+      elNotaFormError.textContent = msg;
+    }
+
+    if (modo === "senar") {
+      var sena = TV.parseNumero(elNotaFormMonto.value);
+      if (!sena || sena <= 0) {
+        elNotaFormMonto.classList.add("campo__input--mal");
+        error("La seña tiene que ser mayor que cero.");
+        return;
+      }
+      if (sena >= n.total) {
+        elNotaFormMonto.classList.add("campo__input--mal");
+        error("La seña no puede ser mayor ni igual al total (" + TV.pesos(n.total) + "). Si pagó todo, usá «Pagado».");
+        return;
+      }
+      sena = Math.round(sena * 100) / 100;
+
+      var campos = { sena: sena, estado: "senado", medioSena: medio };
+      if (!cargar) {
+        cerrarModalNota();
+        editarNota(id, campos);
+        avisar("Seña anotada (sin venta cargada)");
+        return;
+      }
+      ventaDeNota(n, sena, false, medio, function (ventaId) {
+        campos.ventaId = ventaId;
+        cerrarModalNota();
+        editarNota(id, campos);
+        avisar("Seña registrada y venta cargada");
+      });
+      return;
+    }
+
+    /* Pagado */
+    var camposPago = { estado: "pagado", sena: n.total, medioFinal: medio };
+
+    if (n.ventaId) {
+      ventaDeNota(n, n.total, true, medio);
+      cerrarModalNota();
+      editarNota(id, camposPago);
+      avisar("Nota pagada · venta finalizada");
+      return;
+    }
+    if (!cargar) {
+      cerrarModalNota();
+      editarNota(id, camposPago);
+      avisar("Nota pagada (sin venta cargada)");
+      return;
+    }
+    ventaDeNota(n, n.total, true, medio, function (ventaId) {
+      camposPago.ventaId = ventaId;
+      cerrarModalNota();
+      editarNota(id, camposPago);
+      avisar("Nota pagada · venta cargada");
+    });
+  }
+
+  function accionNotaBaja(id) {
+    var n = notaPorId(id);
+    if (!n || n.estado === "baja") return;
+    if (!confirm("¿Dar de baja la nota de " + NT.nombreCliente(n) + "?\n\nNo se borra: queda registrada como dada de baja.")) return;
+
+    var campos = { estado: "baja" };
+    if (n.ventaId && confirm("¿Anular también la venta cargada (" + TV.pesos(n.sena || n.total) + ")?")) {
+      anularVenta(n.ventaId, "Nota de pedido dada de baja");
+      campos.ventaId = null;
+    }
+    editarNota(id, campos);
+    avisar("Nota dada de baja");
+  }
+
+  function enlazarNotas() {
+    if (!elNotasLista) return;
+
+    elNotasLista.addEventListener("click", function (ev) {
+      var b;
+      b = ev.target.closest(".btn-nota-pagar");
+      if (b) { abrirModalNota(b.dataset.id, "pagar"); return; }
+      b = ev.target.closest(".btn-nota-senar");
+      if (b) { abrirModalNota(b.dataset.id, "senar"); return; }
+      b = ev.target.closest(".btn-nota-baja");
+      if (b) { accionNotaBaja(b.dataset.id); }
+    });
+
+    var form = $("#form-nota");
+    if (form) {
+      form.addEventListener("submit", confirmarModalNota);
+      $("#nota-form-cancelar").addEventListener("click", cerrarModalNota);
+      elNotaForm.addEventListener("click", function (ev) {
+        if (ev.target === elNotaForm) cerrarModalNota();
+      });
+    }
+
+    var filtro = $("#notas-filtro");
+    if (filtro) {
+      filtro.addEventListener("click", function (ev) {
+        var b = ev.target.closest(".tipo");
+        if (!b) return;
+        filtroNotas.estado = b.dataset.estado || "";
+        Array.prototype.forEach.call(filtro.querySelectorAll(".tipo"), function (o) {
+          o.classList.toggle("is-active", o === b);
+        });
+        pintarNotas();
+      });
+    }
+  }
+
   /* ---------- balance ---------- */
 
   function enlazarBalance() {
@@ -2930,6 +3382,9 @@
       avisar("Guardado");
     });
     $("#nuevo").addEventListener("click", nuevo);
+    if ($("#nota-registrar")) {
+      $("#nota-registrar").addEventListener("click", registrarNotaDePedido);
+    }
 
     document.querySelectorAll(".navbtn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -2939,6 +3394,7 @@
         mostrarVista(b.dataset.view);
         /* El balance se repinta al entrar, para que siempre esté al día */
         if (b.dataset.view === "balance") pintarBalance();
+        if (b.dataset.view === "notas") pintarNotas();
       });
     });
 
@@ -2947,11 +3403,14 @@
     enlazarCerrarSesion();
     enlazarVentas();
     enlazarBalance();
+    enlazarNotas();
 
     cargarVentasLocales();
     cargarGastosLocales();
+    cargarNotasLocales();
     pintarVentas();
     pintarGastos();
+    pintarNotas();
     pintarBalance();
 
     if (cambios) {
@@ -3049,6 +3508,7 @@
     escucharPresupuesto();
     escucharVentasYGastos();
     escucharCatalogo();
+    escucharNotas();
     if (!appIniciada) {
       appIniciada = true;
       iniciarApp();
