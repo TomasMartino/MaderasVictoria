@@ -52,7 +52,7 @@
     doc.text("VENTA DE MADERAS", M + 4, yTxt + 4.4);
     doc.text("Tiranter\u00edas - pino - \u00e1lamo", M + 4, yTxt + 8);
     doc.text("machimbre - rollizos eucaliptos", M + 4, yTxt + 11.6);
-    doc.text("piso entablonado", M + 4, yTxt + 15.2);
+    doc.text("rollizo de eucalipto impregnado", M + 4, yTxt + 15.2);
 
     doc.setFontSize(6.6);
     doc.text("Lareal Acceso Sur 7522 - Carrodilla - Luj\u00e1n de Cuyo - Mendoza", M + 4, yTxt + 19.6);
@@ -370,6 +370,24 @@
       doc.setLineWidth(0.2);
       doc.line(M, y, DER, y);
     }
+
+    /* ---------- firma de quien recibe ---------- */
+    var Y_FIRMA = Math.max(y + 20, 244);
+    if (Y_FIRMA > 262) {
+      doc.addPage();
+      Y_FIRMA = 40;
+    }
+    var ANCHO_FIRMA = 88;
+    doc.setDrawColor(150, 140, 125);
+    doc.setLineWidth(0.3);
+    doc.line(M, Y_FIRMA, M + ANCHO_FIRMA, Y_FIRMA);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COLOR_MUTED[0], COLOR_MUTED[1], COLOR_MUTED[2]);
+    doc.text("Recib\u00ed conforme", M, Y_FIRMA + 4.5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.2);
+    doc.text("Aclaraci\u00f3n y firma", M, Y_FIRMA + 8.5);
 
     /* ---------- pie ---------- */
     doc.setDrawColor(COLOR_LINEA[0], COLOR_LINEA[1], COLOR_LINEA[2]);
