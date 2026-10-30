@@ -29,6 +29,9 @@
   var escuchandoCatalogo = false;
   var suscripcionCatalogo = null;
   var appIniciada = false;
+  /* Verdadero mientras se esta resolviendo un login manual. Evita que el
+   * listener de Firebase nos devuelva al login en medio del ingreso. */
+  var loginEnCurso = false;
 
   /* Cada dispositivo trabaja en su propio documento de presupuesto.
    * Así 3 personas pueden usar la app al mismo tiempo sin pisarse. */
@@ -3048,7 +3051,9 @@
         mostrarLogin();
         auth.onAuthStateChanged(function (user) {
           if (user) {
-            if (!sesionValida()) {
+            /* Con un login manual en curso este aviso puede llegar antes de
+             * que la marca de sesión se escriba: no es una sesión vieja. */
+            if (!sesionValida() && !loginEnCurso) {
               auth.signOut().catch(function () {});
               localStorage.removeItem(CLAVE_SESION_INICIO);
               usuarioActual = null;
@@ -3059,6 +3064,9 @@
             }
             entrarConSesion(user);
           } else {
+            /* Mientras se está logueando, un "sin usuario" transitorio no
+             * debe devolvernos al login. */
+            if (loginEnCurso) return;
             usuarioActual = null;
             cerrarSuscripciones();
             mostrarLogin();
@@ -3076,6 +3084,7 @@
     usuarioActual = user;
     var btn = $("#cerrar-sesion");
     if (btn) btn.hidden = !user;
+    var estabaEnLogin = !$("#view-login").classList.contains("is-hidden");
     /* Listeners primero: si algo falla al enlazar la UI, las ventas
      * quedan sincronizadas igual. Los flags evitan duplicados. */
     escucharPresupuesto();
@@ -3085,6 +3094,9 @@
       appIniciada = true;
       iniciarApp();
     }
+    /* Si la pantalla quedo en el login (el aviso de Firebase llego despues
+     * de que se armo todo), igual se entra al presupuesto. */
+    if (estabaEnLogin) mostrarVista("presupuesto");
   }
 
   function enlazarCerrarSesion() {
@@ -3123,21 +3135,32 @@
       btn.textContent = "Ingresando…";
     }
 
+    /* La marca de sesión se escribe ANTES de pedir el login: el aviso de
+     * Firebase puede llegar antes que esta promesa y, sin la marca, tomaría
+     * el ingreso como una sesión vencida. */
+    loginEnCurso = true;
+    try {
+      localStorage.setItem(CLAVE_SESION_INICIO, String(Date.now()));
+    } catch (e) {}
+
     auth.signInWithEmailAndPassword(email, password).then(function (cred) {
+      loginEnCurso = false;
       /* No se depende solo del onAuthStateChanged: si el estado no dispara
        * en la página (ocurre con file://), entramos por acá igual.
        * entrarConSesion es idempotente, así que no hay arranque doble. */
       entrarConSesion(cred.user);
-      /* Marca el momento del login para la expiración de 24 horas. */
-      try {
-        localStorage.setItem(CLAVE_SESION_INICIO, String(Date.now()));
-      } catch (e) {}
       if (btn) {
         btn.dataset.enviando = "0";
         btn.disabled = false;
         btn.textContent = "Entrar";
       }
     }).catch(function (err) {
+      loginEnCurso = false;
+      /* El intento falló: se descarta la marca para no dejar una sesión
+       * abierta que no existe. */
+      try {
+        localStorage.removeItem(CLAVE_SESION_INICIO);
+      } catch (e) {}
       errores.hidden = false;
       errores.textContent = err.message || "No se pudo iniciar sesión.";
       if (btn) {
