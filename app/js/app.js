@@ -88,7 +88,7 @@
    * Se guarda el ultimo emitido en este equipo y tambien en Firestore para que
    * dos dispositivos no repitan el mismo numero. */
   var NUMERO_BASE = 23889;      /* el primer presupuesto sale con 23890 */
-  var NUMERO_BASE_REMITO = 0;   /* el primer remito sale con 1 */
+  var NUMERO_BASE_REMITO = 99;  /* el primer remito sale con 100 */
 
   /* Contador de una serie: guarda el ultimo numero en localStorage y, si hay
    * sesion, lo lleva a un documento de Firestore con una transaccion. */
