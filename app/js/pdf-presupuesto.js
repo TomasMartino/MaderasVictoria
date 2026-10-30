@@ -14,7 +14,6 @@
   var COLOR_INK = [43, 33, 24];
   var COLOR_MUTED = [110, 91, 71];
   var COLOR_LINEA = [225, 213, 194];
-  var COLOR_ROJO = [238, 29, 35];
 
   function crearPdf(o) {
     var jsPDF = o.jsPDF;
@@ -24,27 +23,70 @@
     var negocio = o.negocio || {};
     var estado = o.estado || {};
     var calc = o.calc;
-    var y = 16;
+    var y;
 
-    /* ---------- membrete ---------- */
-    if (o.logo) {
-      try { doc.addImage(o.logo, "JPEG", M, y, 42, 29.4); } catch (e) {}
-    }
+    /* ---------- membrete ----------
+     * Caja con tres partes, como el talonario de papel: a la izquierda el
+     * logo y los datos del negocio, en el medio la cruz que marca que el
+     * documento es un PRESUPUESTO, y a la derecha el titulo y la fecha. */
+    var Y_CAB = 12;
+    var ALTO_CAB = 60;
+    var X_DIV = M + 92;
+    var ANCHO_CRUZ = 18;
+    var X_DER = X_DIV + ANCHO_CRUZ;
+
     doc.setTextColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(String(negocio.nombre || "MADERAS VICTORIA").toUpperCase(), DER, y + 5, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("Tel. " + (negocio.telefonos || []).join(" - "), DER, y + 10.5, { align: "right" });
+    doc.setDrawColor(COLOR_INK[0], COLOR_INK[1], COLOR_INK[2]);
+    doc.setLineWidth(0.5);
+    doc.rect(M, Y_CAB, DER - M, ALTO_CAB);
+    doc.line(X_DIV, Y_CAB, X_DIV, Y_CAB + ALTO_CAB);
+    doc.rect(X_DIV, Y_CAB, ANCHO_CRUZ, ANCHO_CRUZ);
+    doc.line(X_DER, Y_CAB, X_DER, Y_CAB + ALTO_CAB);
 
-    y += 29.4;
-    doc.setDrawColor(COLOR_ROJO[0], COLOR_ROJO[1], COLOR_ROJO[2]);
-    doc.setLineWidth(0.8);
-    doc.line(M, y, DER, y);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("X", X_DIV + ANCHO_CRUZ / 2, Y_CAB + 12.3, { align: "center" });
+
+    /* logo + datos del negocio (columna izquierda) */
+    var hayLogo = false;
+    if (o.logo) {
+      try {
+        doc.addImage(o.logo, "JPEG", M + 4, Y_CAB + 3, 32, 22.4);
+        hayLogo = true;
+      } catch (e) {}
+    }
+
+    var yTxt = hayLogo ? Y_CAB + 30 : Y_CAB + 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(String(negocio.nombre || "MADERAS VICTORIA").toUpperCase(), M + 4, yTxt);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text("VENTA DE MADERAS", M + 4, yTxt + 4.4);
+    doc.text("Tiranter\u00edas - pino - \u00e1lamo", M + 4, yTxt + 8);
+    doc.text("machimbre - rollizos eucaliptos", M + 4, yTxt + 11.6);
+    doc.text("piso entablonado", M + 4, yTxt + 15.2);
+
+    doc.setFontSize(6.6);
+    doc.text("Lareal Acceso Sur 7522 - Carrodilla - Luj\u00e1n de Cuyo - Mendoza", M + 4, yTxt + 19.6);
+    doc.text(
+      "maderasvictoria@gmail.com  \u00b7  Tel. " + (negocio.telefonos || []).join(" - "),
+      M + 4,
+      yTxt + 23.2
+    );
+
+    /* titulo y fecha (columna derecha) */
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("PRESUPUESTO", DER - 4, Y_CAB + 12, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.text("Fecha de Emisi\u00f3n: " + String(o.fecha || ""), DER - 4, Y_CAB + 22, { align: "right" });
 
     /* ---------- datos del cliente ---------- */
-    y += 8;
+    y = Y_CAB + ALTO_CAB + 8;
     var cols = [
       { x: M, w: 64, label: "CLIENTE", val: estado.cliente },
       { x: M + 70, w: 52, label: "DIRECCION", val: estado.direccion },
@@ -62,12 +104,6 @@
       doc.setLineWidth(0.2);
       doc.line(c.x, y + 7, c.x + c.w, y + 7);
     });
-
-    /* ---------- tipo de documento ---------- */
-    y += 16;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(String(estado.tipo || "PRESUPUESTO").toUpperCase(), DER, y, { align: "right" });
 
     /* ---------- tabla ---------- */
     var cN = { x: M };
@@ -93,7 +129,7 @@
       return yy + 7;
     }
 
-    y = encabezadoTabla(y + 6);
+    y = encabezadoTabla(y + 20);
 
     var lineas = estado.lineas || [];
     for (var i = 0; i < lineas.length; i++) {
