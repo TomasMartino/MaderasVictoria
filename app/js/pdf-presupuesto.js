@@ -76,7 +76,8 @@
     /* ---------- membrete ----------
      * Caja con tres partes, como el talonario de papel: a la izquierda el
      * logo y los datos del negocio, en el medio la cruz que marca que el
-     * documento es un PRESUPUESTO, y a la derecha el titulo y la fecha. */
+     * documento es un PRESUPUESTO o una NOTA DE PEDIDO, y a la derecha el
+     * titulo y la fecha. */
     var Y_CAB = 12;
     var ALTO_CAB = 60;
     var X_DIV = M + 92;
@@ -90,8 +91,12 @@
 
     columnaNegocio(doc, negocio, o.logo, Y_CAB);
 
-    /* titulo, numero y datos fiscales (columna derecha) */
-    var titulo = "PRESUPUESTO";
+    /* titulo, numero y datos fiscales (columna derecha).
+     * La nota de pedido usa esta misma maqueta: solo cambia el nombre. El
+     * remito tiene su propia maqueta (crearRemito). */
+    var titulo = String(o.tipo || "").toUpperCase() === "NOTA DE PEDIDO"
+      ? "NOTA DE PEDIDO"
+      : "PRESUPUESTO";
     if (o.numero) titulo += " N\u00b0 " + o.numero;
 
     doc.setFont("helvetica", "bold");

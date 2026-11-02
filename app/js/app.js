@@ -1438,6 +1438,7 @@
       logo: window.TV_LOGO_JPG,
       negocio: CAT.negocio,
       estado: estado,
+      tipo: estado.tipo,
       numero: numeroDelTipo(),
       calc: CALC,
       pesos: TV.pesos,
@@ -1475,14 +1476,15 @@
 
   /* Mensaje que acompaña al PDF en el chat. */
   function mensajeConPdf() {
-    return esRemito()
-      ? "Te paso el remito en PDF."
-      : "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
+    if (esRemito()) return "Te paso el remito en PDF.";
+    if (esNotaDePedido()) return "Te paso la nota de pedido en PDF. Cualquier duda me escribís.";
+    return "Te paso el presupuesto en PDF. Cualquier duda me escribís.";
   }
 
-  /* Nombre del archivo: Remito/Presupuesto + cliente + fecha. */
+  /* Nombre del archivo: Presupuesto/Nota de pedido/Remito + cliente + fecha. */
   function nombreDelPdf() {
-    var nombre = (esRemito() ? "Remito " : "Presupuesto ") +
+    var prefijo = esRemito() ? "Remito " : (esNotaDePedido() ? "Nota de pedido " : "Presupuesto ");
+    var nombre = prefijo +
       String(estado.cliente || "Maderas Victoria").trim() +
       " " + String(estado.fecha || "").replace(/-/g, "") + ".pdf";
     return nombre.replace(/[\\/:*?"<>|]/g, "-");
