@@ -61,6 +61,7 @@
   var elEstado = $("#estado-texto");
   var elDot = $("#estado-dot");
   var elFecha = $("#fecha");
+  var elNumero = $("#numero");
 
   /* catalogo vivo: arranca desde la planilla y se edita en la app */
   var catalogo = [];
@@ -90,8 +91,12 @@
   var NUMERO_BASE = 23889;      /* el primer presupuesto sale con 23890 */
   var NUMERO_BASE_REMITO = 99;  /* el primer remito sale con 100 */
 
-  /* Contador de una serie: guarda el ultimo numero en localStorage y, si hay
-   * sesion, lo lleva a un documento de Firestore con una transaccion. */
+  /* Contador de una serie: guarda el ultimo numero en este equipo y lo replica
+   * en Firestore sin bloquear.
+   *
+   * El numero se entrega EN EL ACTO, siempre. Antes esperaba a una transaccion
+   * de Firestore: si el usuario generaba el PDF antes de que volviera (o si la
+   * escritura fallaba), el documento salia sin numero, con un guion. */
   function crearContador(claveLocal, docFirestore, base) {
     function leer() {
       try {
@@ -108,31 +113,38 @@
       try { localStorage.setItem(claveLocal, String(n)); } catch (e) {}
     }
 
-    return {
-      ultimo: function () { return ultimo; },
-      /* Reserva el siguiente y lo entrega por callback. Sin sesion o sin red
-       * usa el contador del equipo. */
-      reservar: function (listo) {
-        if (!usaFirebase || !usuarioActual) {
-          fijar(ultimo + 1);
-          listo(ultimo);
-          return;
-        }
-        var ref = db.collection("config").doc(docFirestore);
+    /* Deja la nube al dia sin frenar la emision. Si otro dispositivo ya iba
+     * mas adelante, el proximo numero sigue desde ese valor. */
+    function sincronizar(valor) {
+      if (!usaFirebase || !usuarioActual) return;
+      var ref = db.collection("config").doc(docFirestore);
+      try {
         db.runTransaction(function (tx) {
           return tx.get(ref).then(function (doc) {
             var n = doc.exists ? Number(doc.data().numero) || 0 : 0;
-            n = Math.max(n, leer()) + 1;
-            tx.set(ref, { numero: n }, { merge: true });
-            return n;
+            if (n >= valor) return n;
+            tx.set(ref, { numero: valor }, { merge: true });
+            return valor;
           });
         }).then(function (n) {
-          fijar(n);
-          listo(n);
+          if (n > ultimo) fijar(n);
         }).catch(function () {
-          fijar(ultimo + 1);
-          listo(ultimo);
+          /* Sin permiso o sin red: manda el contador del equipo. */
         });
+      } catch (e) {}
+    }
+
+    return {
+      ultimo: function () { return ultimo; },
+      /* Para cuando el usuario escribe el numero a mano. */
+      subirHasta: function (n) {
+        if (!isFinite(n) || n < base) return;
+        if (n > ultimo) fijar(n);
+      },
+      reservar: function (listo) {
+        fijar(ultimo + 1);
+        listo(ultimo);
+        sincronizar(ultimo);
       },
     };
   }
@@ -146,6 +158,15 @@
   /* El numero que corresponde al documento que se esta por emitir. */
   function numeroDelTipo() {
     return esRemito() ? estado.numeroRemito : estado.numero;
+  }
+
+  /* Muestra el numero del documento arriba, para que se vea y se pueda
+   * corregir a mano. No pisa lo que el usuario este escribiendo. */
+  function mostrarNumero() {
+    if (!elNumero || document.activeElement === elNumero) return;
+    var n = numeroDelTipo();
+    var texto = n == null || n === "" ? "" : String(n);
+    if (elNumero.value !== texto) elNumero.value = texto;
   }
 
   var ventas = [];
@@ -1294,6 +1315,8 @@
         guardar(true);
       });
     }
+
+    mostrarNumero();
   }
 
   function enlazarCabecera() {
@@ -1317,6 +1340,28 @@
       estado.fecha = elFecha.value;
       guardar(false);
     });
+
+    /* El numero se puede corregir a mano: si escriben uno mas alto, el
+     * proximo documento sigue desde ahi. */
+    if (elNumero) {
+      elNumero.addEventListener("change", function () {
+        var n = parseInt(String(elNumero.value).replace(/\D/g, ""), 10);
+        if (!isFinite(n) || n <= 0) {
+          mostrarNumero();
+          return;
+        }
+        if (esRemito()) {
+          estado.numeroRemito = n;
+          contadorRemito.subirHasta(n);
+        } else {
+          estado.numero = n;
+          contadorPresupuesto.subirHasta(n);
+        }
+        guardar(true);
+        mostrarNumero();
+        avisar("Número " + n);
+      });
+    }
 
     document.querySelectorAll("#tipos .tipo").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -1608,6 +1653,7 @@
       estado.numero = n;
       guardar(true);
     });
+    mostrarNumero();
     avisar("Presupuesto nuevo");
   }
 
